@@ -9,7 +9,36 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```
 
+
+```{r}
+library(cytomapper)
+library(dplyr)
+```
+
+# Read in images
+
+Our images are stored in the `images` folder within the `Data` folder. We can use `loadImages()` from the `cytomapper` package to load all of the tiff images in this folder into a `CytoImageList` object.
+
+
 ```{r}
 
+pathToImages <- "Data/images"
+images <- loadImages(pathToImages, "tiff")
+
+
 ```
+
+
+# Load the clinical data
+
+```{r}
+
+clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
+clinical <- clinical |>
+  mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
+
+```
+
+
+
 
