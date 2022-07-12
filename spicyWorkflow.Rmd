@@ -32,8 +32,21 @@ names(imageDirs) <- dir(pathToImages, full.names = FALSE)
 files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simplify = FALSE)
 
 # Read files with readImage from EBImage
-images <- lapply(files, readImage)
+images <- lapply(files, readImage, as.is = TRUE)
 
+
+```
+
+
+```{r}
+
+# Store images in a CytoImageList with images on_disk as h5 files to save memory. 
+dir.create("Data/h5Files")
+images <- CytoImageList(images, on_disk = TRUE, h5FilesPath = "Data/h5Files")
+
+mcols(images) <- S4Vectors::DataFrame(ImageNb = names(images))
+
+gc()
 ```
 
 
@@ -58,14 +71,27 @@ clinical <- clinical[names(images), ]
 
 ```{r}
 
+img <- images[1]
+img[[1]] <- sqrt(img[[1]])
+
 masks <- simpleSeg(images,
                    nucleus = "HH3",
                    cellBody = "dilate",
                    sizeSelection = 10,
                    discSize = 3,
-                   cores = 5)
+                   cores = 5,
+                   tolerance = 1)
 
+mcols(masks) <- S4Vectors::DataFrame(ImageNb = names(masks)[1])
+
+display(colorLabels(masks[[1]]))
 
 ```
 
+
+# Check segmentation
+
+```{r}
+plotPixels(images[1], mask = masks[1], img_id = "ImageNb", colour_by = c("HH3", "CD45"))
+```
 
