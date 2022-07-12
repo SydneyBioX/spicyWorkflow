@@ -23,8 +23,16 @@ Our images are stored in the `images` folder within the `Data` folder. We can us
 ```{r}
 
 pathToImages <- "Data/images"
-images <- loadImages(pathToImages, "tiff")
 
+# Get directories of images
+imageDirs <- dir(pathToImages, full.names = TRUE)
+names(imageDirs) <- dir(pathToImages, full.names = FALSE)
+
+# Get files in each directory
+files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simplify = FALSE)
+
+# Read files with readImage from EBImage
+images <- lapply(files, readImage)
 
 ```
 
@@ -37,8 +45,27 @@ clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
 
+clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
+
+rownames(clinical) <- clinical$imageID
+
+clinical <- clinical[names(images), ]
+
 ```
 
 
+# Segment the images
+
+```{r}
+
+masks <- simpleSeg(images,
+                   nucleus = "HH3",
+                   cellBody = "dilate",
+                   sizeSelection = 10,
+                   discSize = 3,
+                   cores = 5)
+
+
+```
 
 
