@@ -13,11 +13,13 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```{r}
 library(cytomapper)
 library(dplyr)
+library(ggplot2)
+library(simpleSeg)
 ```
 
 # Read in images
 
-Our images are stored in the `images` folder within the `Data` folder. We can use `loadImages()` from the `cytomapper` package to load all of the tiff images in this folder into a `CytoImageList` object.
+Our images are stored in the `images` folder within the `Data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, you could use `loadImages()` from the `cytomapper` package to load all of the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
 
 
 ```{r}
@@ -71,27 +73,74 @@ clinical <- clinical[names(images), ]
 
 ```{r}
 
-img <- images[1]
-img[[1]] <- sqrt(img[[1]])
-
 masks <- simpleSeg(images,
-                   nucleus = "HH3",
+                   nucleus = c("HH3"),
                    cellBody = "dilate",
                    sizeSelection = 10,
                    discSize = 3,
                    cores = 5,
-                   tolerance = 1)
+                   tolerance = 0.9, 
+                   smooth = 2, 
+                   ext = 1,
+                   transform = c("maxThresh"))
 
-mcols(masks) <- S4Vectors::DataFrame(ImageNb = names(masks)[1])
-
-display(colorLabels(masks[[1]]))
+#display(colorLabels(masks[[1]]))
 
 ```
 
 
-# Check segmentation
+## Visualise separation
 
 ```{r}
-plotPixels(images[1], mask = masks[1], img_id = "ImageNb", colour_by = c("HH3", "CD45"))
+display(colorLabels(masks[[1]]))
+
+```
+
+## Visualise outlines
+
+```{r}
+# img <- CytoImageList(images[1])
+# mcols(img) <- S4Vectors::DataFrame(imageID = names(img))
+# x = plotPixels(image = normalize(img), mask = masks[1], img_id = "imageID", colour_by = c("CD45", "HH3"), return_images = TRUE)
+# display(x$images[[1]])
+
+img <- sqrt(normalize(images[[1]]))*1.5
+mask <- masks[[1]]
+cells <- rgbImage(blue=img[,,"HH3"], green=img[,,"CD45"])
+cells <- paintObjects(mask, cells, col='#ff00ff')
+display(cells, all = TRUE)
+
+```
+
+
+## Check outlying samples
+
+
+
+# Summarise cell features.
+
+
+```{r}
+cells <- createCells(masks, images)
+colnames(cells) <- c(dimnames(images[[1]])[[3]], "x", "y", "area", "imageID")
+
+cells$imageID <- factor(cells$imageID, labels =  names(masks))
+```
+
+
+# Normalize data
+
+
+```{r}
+
+  ggplot(cells, aes(x = sqrt(CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
+
+```
+```{r}
+cellsNorm <- normalizeCells(cells, markers = dimnames(images[[1]])[[3]], transformation = "asinh", method = c("1stPC"))
+
+ ggplot(cellsNorm, aes(x = sqrt(CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
+
+
 ```
 
