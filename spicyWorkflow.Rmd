@@ -19,6 +19,14 @@ library(FuseSOM)
 library(ggpubr)
 library(scater)
 ```
+# Global paramaters
+```{r}
+nCores <- 4
+BPPARAM <- simpleSeg:::generateBPParam(nCores)
+
+```
+
+
 
 # Read in images
 
@@ -45,7 +53,7 @@ images <- lapply(files, readImage, as.is = TRUE)
 
 ```{r}
 
-BPPARAM <- simpleSeg:::generateBPParam(5)
+
 
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
 dir.create("Data/h5Files")
@@ -54,7 +62,7 @@ mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
 
 gc()
 
- images <- loadImages("Data/h5Files/", "h5", on_disk = TRUE)
+ images <- cytomapper::loadImages("Data/h5Files/", pattern = "h5", h5FilesPath = "Data/h5Files/",on_disk = TRUE)
  mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
 ```
 
@@ -94,13 +102,23 @@ masks <- simpleSeg(images,
                    cellBody = "dilate",
                    sizeSelection = 10,
                    discSize = 3,
-                   cores = 5,
+                   cores = nCores,
                    tolerance = 0.9, 
                    smooth = 2, 
                    ext = 1,
                    transform = c("maxThresh"))
 
 #display(colorLabels(masks[[1]]))
+
+
+mask <- nucSeg(images[[1]],
+               nucleus_index = c("PCA","HH3"),
+               size_selection = 40,
+               smooth = 1,
+               tolerance = NULL,
+               watershed = "combine", 
+               ext = 1)
+
 
 
 masks2 <- BiocParallel::bplapply(images, nucSeg, 
@@ -110,7 +128,7 @@ masks2 <- BiocParallel::bplapply(images, nucSeg,
                    tolerance = NULL,
                    watershed = "combine", 
                    ext = 1,
-                   BPPARAM = BiocParallel::MulticoreParam(5))
+                   BPPARAM = BiocParallel::MulticoreParam(4))
 
 masks3 <- CytoImageList(lapply(masks2, Image))
 mcols(masks3)$imageID <- names(masks2)
@@ -118,7 +136,7 @@ mcols(masks3)$imageID <- names(masks2)
 cells <- cytomapper::measureObjects(masks3, 
                                     images, 
                                     img_id = "imageID", 
-                                    BPPARAM = simpleSeg:::generateBPParam(cores = 6))
+                                    BPPARAM = simpleSeg:::generateBPParam(cores = nCores))
 
 im <- read.csv("../../../Downloads/Single_Cell_Data (3).csv")
 cellCountsTheirs <- table(im$Point_Num)
