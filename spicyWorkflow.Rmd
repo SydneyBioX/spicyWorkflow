@@ -15,6 +15,9 @@ library(cytomapper)
 library(dplyr)
 library(ggplot2)
 library(simpleSeg)
+library(FuseSOM)
+library(ggpubr)
+library(scater)
 ```
 
 # Read in images
@@ -42,13 +45,17 @@ images <- lapply(files, readImage, as.is = TRUE)
 
 ```{r}
 
+BPPARAM <- simpleSeg:::generateBPParam(5)
+
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
 dir.create("Data/h5Files")
-images <- CytoImageList(images, on_disk = TRUE, h5FilesPath = "Data/h5Files")
-
-mcols(images) <- S4Vectors::DataFrame(ImageNb = names(images))
+images <- CytoImageList(images, on_disk = TRUE, h5FilesPath = "Data/h5Files", BPPARAM = BPPARAM)
+mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
 
 gc()
+
+ images <- loadImages("Data/h5Files/", "h5", on_disk = TRUE)
+ mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
 ```
 
 
@@ -71,10 +78,19 @@ clinical <- clinical[names(images), ]
 
 # Segment the images
 
+## Normalize the images first
+
+```{r}
+images <- cytomapper::normalize(images, separateImages = TRUE, overwrite = TRUE)
+
+```
+
+## Run simpleSeg
 ```{r}
 
+
 masks <- simpleSeg(images,
-                   nucleus = c("HH3"),
+                   nucleus = c("HH3", "P", "Nuc"),
                    cellBody = "dilate",
                    sizeSelection = 10,
                    discSize = 3,
@@ -86,6 +102,35 @@ masks <- simpleSeg(images,
 
 #display(colorLabels(masks[[1]]))
 
+
+masks2 <- BiocParallel::bplapply(images, nucSeg, 
+                   nucleus_index = c("PCA","HH3"),
+                   size_selection = 40,
+                   smooth = 1,
+                   tolerance = NULL,
+                   watershed = "combine", 
+                   ext = 1,
+                   BPPARAM = BiocParallel::MulticoreParam(5))
+
+masks3 <- CytoImageList(lapply(masks2, Image))
+mcols(masks3)$imageID <- names(masks2)
+
+cells <- cytomapper::measureObjects(masks3, 
+                                    images, 
+                                    img_id = "imageID", 
+                                    BPPARAM = simpleSeg:::generateBPParam(cores = 6))
+
+im <- read.csv("../../../Downloads/Single_Cell_Data (3).csv")
+cellCountsTheirs <- table(im$Point_Num)
+names(cellCountsTheirs) <- paste0("Point", names(cellCountsTheirs))
+
+cellCountsMine <- table(colData(cells)$imageID)
+names(cellCountsMine) <- unlist(lapply(strsplit(names(cellCountsMine), "_"),function(x)x[1]))
+
+plot(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), col = 0)
+text(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), names(cellCountsMine))
+
+display(colorLabels(masks[[grep("5302", names(masks))]]))
 ```
 
 
@@ -104,7 +149,7 @@ display(colorLabels(masks[[1]]))
 # x = plotPixels(image = normalize(img), mask = masks[1], img_id = "imageID", colour_by = c("CD45", "HH3"), return_images = TRUE)
 # display(x$images[[1]])
 
-img <- sqrt(normalize(images[[1]]))*1.5
+img <- sqrt(images[[1]])*1.5
 mask <- masks[[1]]
 cells <- rgbImage(blue=img[,,"HH3"], green=img[,,"CD45"])
 cells <- paintObjects(mask, cells, col='#ff00ff')
@@ -121,10 +166,12 @@ display(cells, all = TRUE)
 
 
 ```{r}
-cells <- createCells(masks, images)
-colnames(cells) <- c(dimnames(images[[1]])[[3]], "x", "y", "area", "imageID")
 
-cells$imageID <- factor(cells$imageID, labels =  names(masks))
+cells <- cytomapper::measureObjects(masks, 
+                                    images, 
+                                    img_id = "imageID", 
+                                    BPPARAM = simpleSeg:::generateBPParam(cores = 6))
+
 ```
 
 
@@ -133,14 +180,163 @@ cells$imageID <- factor(cells$imageID, labels =  names(masks))
 
 ```{r}
 
-  ggplot(cells, aes(x = sqrt(CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
+  df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
+  ggplot(df, aes(x = (CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
 
 ```
+
+
 ```{r}
-cellsNorm <- normalizeCells(cells, markers = dimnames(images[[1]])[[3]], transformation = "asinh", method = c("1stPC"))
 
- ggplot(cellsNorm, aes(x = sqrt(CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
+cells <- normalizeCells(cells, transformation = "sqrt", method = c("99perc"), assayIn = "counts")
 
 
+df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
+ ggplot(df, aes(x = (ECAD), colour = imageID)) + geom_density() + theme(legend.position = "none")
+
+
+```
+
+```{r}
+
+useMarkers <- c("PanKRT", "ECAD", "CD45", "CK7", "VIM", "FAP", "CK5", "CD36",
+                "CD31", "CD20", "CD4", "CD3", "CD8", "CD14", "CD11c", "CD68",
+                "HLADRDPDQ", "SMA")
+
+ ggplot(im, aes(x = (CD3), colour = factor(Point_Num))) + geom_density() + theme(legend.position = "none")
+
+res.sce <- runFuseSOM(im, markers = useMarkers, numClusters = 20)
+
+
+```
+
+
+
+```{r}
+
+useMarkers <- rownames(cells)#[!rownames(cells) %in% c("P", "Nuc", "HH3")]
+
+
+res.sce <- runFuseSOM(cells, markers = useMarkers, assay = 'norm', numClusters = 40)
+
+kseq <- 2:40
+
+k.est.sce <- FuseSOM::estimateNumcluster(cells@metadata$SOM, kseq = kseq)
+
+# plot the Jump statistics
+
+slopes <- k.est.sce$Distance$Slopes
+df <- data.frame(Clusters = 1:length(slopes), Slope = slopes)
+k.sce.slope <- k.est.sce$Distance$k_Slope
+p <- ggpubr::ggline(df, x = "Clusters", y = "Slope", group = 1, color = "steelblue") + 
+  geom_vline(xintercept = k.sce.slope, linetype = 2, color = 'steelblue') + 
+  labs(y = "Slope statistic (k)", x = "Number of clusters k", 
+       title = "Optimal number of clusters using the elbow method")
+
+p
+```
+
+```{r}
+# lets plot the Jump this time
+jumps <- k.est.sce$Distance$Jumps
+df <- data.frame(Clusters = 1:length(jumps), Jump = jumps)
+k.df.jump <- k.est.sce$Distance$k_Jump
+p.df <- ggpubr::ggline(df, x = "Clusters", y = "Jump", group = 1, color = "steelblue") + 
+  geom_vline(xintercept = k.df.jump, linetype = 2, color = 'steelblue') + 
+  labs(y = "Jump statistic (k)", x = "Number of clusters k", 
+       title = "Optimal number of clusters using the elbow method")
+
+p.df
+```
+```{r}
+cells <- runFuseSOM(cells, assay = 'norm', numClusters = 20)
+colData(cells)$clusters <- factor(colData(cells)$clusters)
+
+cells <- estimateNumcluster(cells, kseq = 2:30)
+optiPlot(cells)
+
+
+```
+
+
+```{r}
+generateHeatmap <- function(data, markers, labels){
+  features <- data
+  features_heatmap <- aggregate(.~as.character(labels),
+                                features[,markers],
+                                mean)
+  rownames(features_heatmap) <- features_heatmap[,1]
+  features_heatmap <- features_heatmap[,-1]
+  
+  features_heatmap <- sweep(features_heatmap,2, colMeans(features_heatmap), "-")
+  features_heatmap <- sweep(features_heatmap,2, apply(features_heatmap,2,sd), "/")
+  features_heatmap[features_heatmap>2] <- 2
+  features_heatmap[features_heatmap< -2] <- -2
+  
+  annotation_row = data.frame(Clusters = rownames(features_heatmap))
+  
+  rn <- rownames(features_heatmap)
+  features_heatmap <- as.matrix(features_heatmap)
+  rownames(features_heatmap) <- rn
+  rownames(annotation_row) <- rownames(features_heatmap)
+  
+  gaps_row <- which(!duplicated(substr(rownames(features_heatmap),1,2)))[-1]-1
+  
+  p <- ggplotify::as.ggplot(pheatmap::pheatmap(features_heatmap, gaps_row = gaps_row, 
+                                     annotation_row = annotation_row, annotation_legend = FALSE, 
+                                     cluster_rows = FALSE, cluster_cols = F))
+  return(p)
+}
+
+
+p.heat <- generateHeatmap(as.data.frame(t(assay(cells, "norm"))), rownames(assay(cells, "norm")), colData(cells)$clusters)
+
+p.heat <- generateHeatmap(im, useMarkers, res.sce$clusters)
+
+p.heat <- generateHeatmap(im, useMarkers, labels)
+
+p.heat <- markerHeatmap(as.data.frame(t(assay(cells, "norm"))), markers = useMarkers, clusters = colData(cells)$clusters)
+
+
+labels <- colData(cells)$clusters
+data <- as.data.frame(t(assay(cells, "norm")))
+
+data <- data[labels!="cluster_6",]
+labels <- labels[labels!="cluster_6"]
+
+p.heat <- generateHeatmap(data = data, markers = useMarkers, labels = labels)
+
+```
+
+```{r}
+
+set.seed(51773)
+cells <- runUMAP(cells, subset_row = useMarkers, exprs_values = "norm")
+plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(1,20,40,50,60)]], dimred="UMAP", colour_by="imageID")
+```
+
+```{r}
+as.data.frame(colData(cells)[colData(cells)$imageID == "Point2203_pt1072_31606",]) |>
+ggplot(aes(m.cx, m.cy, colour = clusters)) + geom_point()
+
+```
+
+```{r}
+im <- read.csv("../../../Downloads/Single_Cell_Data (3).csv")
+
+cellCountsTheirs <- table(im$Point_Num)
+names(cellCountsMine) <- unlist(lapply(strsplit(names(cellCountsMine), "_"),function(x)x[1]))
+names(cellCountsTheirs) <- paste0("Point", names(cellCountsTheirs))
+
+plot(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), col = 0)
+text(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), names(cellCountsMine))
+abline(0,1)
+
+x <- readImage("Point2203_labels.tiff")
+w <- sapply(unique(x), function(i)colMeans(which(x==i, arr.ind = TRUE)))
+```
+
+```{r}
+display(colorLabels(masks[[grep("3104",names(masks))]]))
 ```
 
