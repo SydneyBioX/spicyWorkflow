@@ -5,7 +5,9 @@ nucSeg <- function(image,
                    smooth = 1,
                    tolerance = 0.01,
                    watershed = "combine",
-                   ext = 1) {
+                   ext = 1,
+                   discSize = 3,
+                   wholeCell = TRUE) {
   
   
   
@@ -32,7 +34,13 @@ nucSeg <- function(image,
     dist <- EBImage::distmap(nMask)
     wMask <-
       EBImage::watershed(dist, tolerance = tolerance, ext = ext)
-      return(wMask)
+    
+    if(wholeCell){
+      kern <- EBImage::makeBrush(discSize, shape = "disc")
+      wMask <- EBImage::dilate(wMask, kern)
+    }
+    
+    return(wMask)
     
   }
   
@@ -54,6 +62,12 @@ nucSeg <- function(image,
     
     wMask <-
       EBImage::watershed(dist*nuc, tolerance = tolerance, ext = ext)
+    
+    if(wholeCell){
+    kern <- EBImage::makeBrush(discSize, shape = "disc")
+    wMask <- EBImage::dilate(wMask, kern)
+    }
+    
     return(wMask)
   }
   
@@ -73,7 +87,13 @@ nucSeg <- function(image,
   # Size Selection
   tabNuc <- table(wMask)
   wMask[wMask %in% names(which(tabNuc <= size_selection))] <- 0  
-
+  
+  if(wholeCell){
+    kern <- EBImage::makeBrush(discSize, shape = "disc")
+    wMask <- EBImage::dilate(wMask, kern)
+  }
+  
+  
   wMask
   
 }
@@ -83,29 +103,31 @@ nucSeg <- function(image,
   
   
   if("PCA" %in% nucleus_index){
-  image <- apply(image, 3, function(x){
-    x <- (x)
-    EBImage::gblur(x, smooth)
-  }, simplify = FALSE)
-  
-  image <- abind(image, along = 3)
-  
-  image.long <- apply(image,3, as.numeric)
-  pca <- prcomp((image.long))
-  
-  usePC <- 1
-  if(any(nucleus_index%in%colnames(image.long))){
-    ind <- intersect(nucleus_index, colnames(image.long))
-    usePC <- which.max(apply(pca$x, 2, cor, image.long[,nucleus_index[nucleus_index != "PCA"][1]]))
-  }
-  
-  imagePC <- as.matrix(image[,,1])
-  imagePC[] <- pca$x[,usePC] - min(pca$x[,usePC])
-  return(imagePC)
+    image <- apply(image, 3, function(x){
+      x <- (x)
+      EBImage::gblur(x, smooth)
+    }, simplify = FALSE)
+    
+    image <- abind(image, along = 3)
+    
+    image.long <- apply(image,3, as.numeric)
+    pca <- prcomp(image.long[, apply(image.long, 2, sd)>0])
+    
+    usePC <- 1
+    if(any(nucleus_index%in%colnames(image.long))){
+      ind <- intersect(nucleus_index, colnames(image.long))
+      usePC <- which.max(abs(apply(pca$x, 2, cor, image.long[,nucleus_index[nucleus_index != "PCA"][1]])))
+    }
+    
+    PC <- pca$x[,usePC]
+    PC <- PC*sign(cor(PC, image.long[,nucleus_index[nucleus_index != "PCA"][1]]))
+    imagePC <- as.matrix(image[,,1])
+    imagePC[] <- PC - min(PC)
+    return(imagePC)
   }
   
   if(is(nucleus_index, "character"))
-  ind <- intersect(nucleus_index, dimnames(image)[[3]])
+    ind <- intersect(nucleus_index, dimnames(image)[[3]])
   
   nuc <- image[, , ind]
   if(length(ind)>1) nuc <- apply(nuc, c(1,2), mean)
@@ -118,10 +140,10 @@ nucSeg <- function(image,
 
 .estimateTolerance <- function(input, nMask){
   y <- EBImage::distmap(nMask)
-   fit <- lm(as.numeric(input[y>0]) ~ as.numeric(y[y>0])-1)
-   tolerance <- coef(fit)[1]
-   tolerance
+  fit <- lm(as.numeric(input[y>0]) ~ as.numeric(y[y>0])-1)
+  tolerance <- coef(fit)[1]
+  tolerance
   # tolerance <- sd(as.numeric(input[y>0]))/sd(as.numeric(y[y>0]))
   # tolerance
 }
- 
+

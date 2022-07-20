@@ -2,5 +2,4 @@
 .Rhistory
 .RData
 .Ruserdata
-Data/h5Files/
-RISOMcells.RData
+h5Files/
