@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```
 
 
-```{r}
+```{r message=FALSE}
 library(cytomapper)
 library(dplyr)
 library(ggplot2)
@@ -49,6 +49,8 @@ files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simpl
 # Read files with readImage from EBImage
 images <- lapply(files, readImage, as.is = TRUE)
 
+# We've found it useful to sqrt transform our images
+images <- lapply(images, sqrt)
 
 ```
 
@@ -61,7 +63,6 @@ images <- lapply(files, readImage, as.is = TRUE)
 dir.create("Data/h5Files")
 images <- CytoImageList(images, on_disk = TRUE, h5FilesPath = "Data/h5Files", BPPARAM = BPPARAM)
 mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
-
 gc()
 
 # images <- cytomapper::loadImages("Data/h5Files/", pattern = "h5", h5FilesPath = "Data/h5Files/",on_disk = TRUE)
@@ -76,6 +77,7 @@ gc()
 clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
+clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
 
 clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
 
@@ -88,13 +90,6 @@ clinical <- clinical[names(images), ]
 
 # Segment the images
 
-## Normalize the images first
-
-```{r}
-images <- cytomapper::normalize(images, separateImages = TRUE, overwrite = TRUE)
-
-```
-
 ## Run simpleSeg
 ```{r}
 
@@ -105,59 +100,15 @@ masks <- simpleSeg(images,
                    sizeSelection = 40,
                    discSize = 3,
                    cores = nCores,
-                   tolerance = NULL, 
-                   smooth = 1, 
-                   ext = 1)
+                   tolerance = NULL)
 
-#display(colorLabels(masks[[1]]))
-
-
-mask <- nucSeg(images[[1]],
-               nucleus_index = c("PCA","HH3"),
-               size_selection = 40,
-               smooth = 1,
-               tolerance = NULL,
-               watershed = "combine", 
-               ext = 1)
-
-
-
-masks2 <- BiocParallel::bplapply(images, nucSeg, 
-                   nucleus_index = c("PCA","HH3"),
-                   size_selection = 40,
-                   smooth = 1,
-                   tolerance = NULL,
-                   watershed = "combine", 
-                   ext = 1,
-                   BPPARAM = BPPARAM)
-
-masks3 <- CytoImageList(lapply(masks2, Image))
-mcols(masks3)$imageID <- names(masks2)
-
-cells <- cytomapper::measureObjects(masks3, 
-                                    images, 
-                                    img_id = "imageID", 
-                                    BPPARAM = simpleSeg:::generateBPParam(cores = nCores))
-
-im <- risom_dat
-cellCountsTheirs <- table(im$Point_Num)
-names(cellCountsTheirs) <- paste0("Point", names(cellCountsTheirs))
-
-cellCountsMine <- table(colData(cells)$imageID)
-names(cellCountsMine) <- unlist(lapply(strsplit(names(cellCountsMine), "_"),function(x)x[1]))
-
-plot(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), col = 0)
-text(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), names(cellCountsMine))
-abline(0,1)
-
-display(colorLabels(masks[[grep("5302", names(masks))]]))
 ```
 
 
 ## Visualise separation
 
 ```{r}
-display(colorLabels(masks[[1]]))
+#display(colorLabels(masks[[1]]))
 
 ```
 
@@ -169,7 +120,8 @@ display(colorLabels(masks[[1]]))
 # x = plotPixels(image = normalize(img), mask = masks[1], img_id = "imageID", colour_by = c("CD45", "HH3"), return_images = TRUE)
 # display(x$images[[1]])
 
-img <- sqrt(images[[1]])*1.5
+img <- as.array(images[[1]])
+img <- sweep(img, 3, apply(img, 3, max), "/")
 mask <- masks[[1]]
 cells <- rgbImage(blue=img[,,"HH3"], green=img[,,"CD45"])
 cells <- paintObjects(mask, cells, col='#ff00ff')
@@ -195,145 +147,125 @@ cells <- cytomapper::measureObjects(masks,
 ```
 
 
+<!-- ## Compare to original cells. -->
+
+<!-- It is comforting to see that our segmentation detects a similar number of cells to the segmentation from the manuscript. -->
+<!-- ```{r} -->
+<!-- im <- risom_dat #From FuseSOM -->
+<!-- cellCountsTheirs <- table(im$Point_Num) -->
+<!-- names(cellCountsTheirs) <- paste0("Point", names(cellCountsTheirs)) -->
+
+<!-- cellCountsMine <- table(colData(cells)$imageID) -->
+<!-- names(cellCountsMine) <- unlist(lapply(strsplit(names(cellCountsMine), "_"),function(x)x[1])) -->
+
+<!-- plot(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), col = 0) -->
+<!-- text(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), names(cellCountsMine)) -->
+<!-- abline(0,1) -->
+
+<!-- ``` -->
+
+
 # Normalize data
 
 
 ```{r}
 
   df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
-  ggplot(df, aes(x = (CD3), colour = imageID)) + geom_density() + theme(legend.position = "none")
+  ggplot(df, aes(x = (CD45), colour = imageID)) + geom_density() + theme(legend.position = "none")
 
 ```
 
 
+
 ```{r}
 
-cells <- normalizeCells(cells, transformation = "sqrt", method = c("1stPC"), assayIn = "counts")
+cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
+cells <- normalizeCells(cells,transformation = "sqrt", method = c("99perc"), assayIn = "norm")
 
 
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
  ggplot(df, aes(x = (CD45), colour = imageID)) + geom_density() + theme(legend.position = "none")
 
+```
+
+
+
+```{r}
+
+source("scMerge2.R")
+
+#sc merge
+use_bpparam <- BiocParallel::MulticoreParam(workers = nCores)
+use_bsparam <- BiocSingular::RandomParam()
+use_bnparam <- BiocNeighbors::AnnoyParam()
+# dat_sub <- dat[sample(nrow(dat), 500000), ]
+# ctl_genes <- rownames(sce)
+exprsMat <- assay(cells, "norm")
+batch <- cells$imageID
+colnames(exprsMat) <- seq_len(ncol(exprsMat))
+markers <- rownames(cells)
+scMerge_res <- scMerge2(exprsMat = exprsMat, #the exprs matrix to be normalised
+                        batch = batch, # batch labels
+                        cellTypes = NULL, # set NULL clustering will be performed within scMerge2... can also try the published cell type labels, which will match between the cell types
+                        use_bpparam = use_bpparam,
+                        use_bsparam = use_bsparam,
+                        use_bnparam = use_bnparam,
+                        ruvK = 2, # Number of unwanted variation to be removed
+                        ctl = markers, # negative control genes
+                        k_psuedoBulk = 5, # Number of pseudo bulk to be created for each cell type each batch
+                        k_celltype = 20, # Number of neighbours when perform graph clustering
+                        pseudoBulk_fn = create_pseudoBulk, # ways of constructing pseudo bulk
+                        ncores = nCores,
+                        chosen.hvg = markers, #Highly variable genes to be used to identify pseudo-replicates... since IMC has very few features, using all features.
+                        cosineNorm = F,
+                        return_subset = FALSE,
+                        normalised = T)
+
+assay(cells, "scMerge2", withDimnames=FALSE) <- t(scMerge_res$newY)
 
 ```
 
 ```{r}
+df <- as.data.frame(cbind(as.data.frame(colData(cells)), t(assay(cells, "scMerge2"))))
+ ggplot(df, aes(x = (CD45), colour = imageID)) + geom_density() + theme(legend.position = "none")
 
+```
+
+
+
+
+
+
+
+# Cluster cells using FuseSOM package
+
+## Perform the clustering
+```{r}
+
+#The markers used in the original publication to gate cell types
 useMarkers <- c("PanKRT", "ECAD", "CD45", "CK7", "VIM", "FAP", "CK5", "CD36",
                 "CD31", "CD20", "CD4", "CD3", "CD8", "CD14", "CD11c", "CD68",
                 "HLADRDPDQ", "SMA")
 
- ggplot(im, aes(x = (CD3), colour = factor(Point_Num))) + geom_density() + theme(legend.position = "none")
 
-res.sce <- runFuseSOM(im, markers = useMarkers, numClusters = 20)
-
+cells <- runFuseSOM(cells, assay = 'norm', numClusters = 20)
 
 ```
 
 
-
+## Check how many clusters should be used.
 ```{r}
 
-useMarkers <- rownames(cells)#[!rownames(cells) %in% c("P", "Nuc", "HH3")]
-
-
-res.sce <- runFuseSOM(cells, markers = useMarkers, assay = 'norm', numClusters = 40)
-
-kseq <- 2:40
-
-k.est.sce <- FuseSOM::estimateNumcluster(cells@metadata$SOM, kseq = kseq)
-
-# plot the Jump statistics
-
-slopes <- k.est.sce$Distance$Slopes
-df <- data.frame(Clusters = 1:length(slopes), Slope = slopes)
-k.sce.slope <- k.est.sce$Distance$k_Slope
-p <- ggpubr::ggline(df, x = "Clusters", y = "Slope", group = 1, color = "steelblue") + 
-  geom_vline(xintercept = k.sce.slope, linetype = 2, color = 'steelblue') + 
-  labs(y = "Slope statistic (k)", x = "Number of clusters k", 
-       title = "Optimal number of clusters using the elbow method")
-
-p
-```
-
-```{r}
-# lets plot the Jump this time
-jumps <- k.est.sce$Distance$Jumps
-df <- data.frame(Clusters = 1:length(jumps), Jump = jumps)
-k.df.jump <- k.est.sce$Distance$k_Jump
-p.df <- ggpubr::ggline(df, x = "Clusters", y = "Jump", group = 1, color = "steelblue") + 
-  geom_vline(xintercept = k.df.jump, linetype = 2, color = 'steelblue') + 
-  labs(y = "Jump statistic (k)", x = "Number of clusters k", 
-       title = "Optimal number of clusters using the elbow method")
-
-p.df
-```
-
-
-```{r}
-cells <- runFuseSOM(cells, assay = 'norm', numClusters = 24, markers = useMarkers)
-colData(cells)$clusters <- factor(colData(cells)$clusters)
-
+# As I've already run runFuseSOM I don't need to run generateSOM()
 cells <- estimateNumCluster(cells, kseq = 2:30)
-optiPlot(cells)
+optiPlot(cells, method = "silhouette")
 
 
 ```
 
 
 ```{r}
-markerHeatmap(as.data.frame(t(assay(cells, "norm"))), markers = rownames(cells), clusters = factor(colData(cells)$clusters))
-```
-
-
-
-```{r}
-generateHeatmap <- function(data, markers, labels){
-  features <- data
-  features_heatmap <- aggregate(.~as.character(labels),
-                                features[,markers],
-                                mean)
-  rownames(features_heatmap) <- features_heatmap[,1]
-  features_heatmap <- features_heatmap[,-1]
-  
-  features_heatmap <- sweep(features_heatmap,2, colMeans(features_heatmap), "-")
-  features_heatmap <- sweep(features_heatmap,2, apply(features_heatmap,2,sd), "/")
-  features_heatmap[features_heatmap>2.5] <- 2.5
-  features_heatmap[features_heatmap< -2.5] <- -2.5
-  
-  annotation_row = data.frame(Clusters = rownames(features_heatmap))
-  
-  rn <- rownames(features_heatmap)
-  features_heatmap <- as.matrix(features_heatmap)
-  rownames(features_heatmap) <- rn
-  rownames(annotation_row) <- rownames(features_heatmap)
-  
-  gaps_row <- which(!duplicated(substr(rownames(features_heatmap),1,2)))[-1]-1
-  
-  p <- ggplotify::as.ggplot(pheatmap::pheatmap(features_heatmap, gaps_row = gaps_row, 
-                                     annotation_row = annotation_row, annotation_legend = FALSE, 
-                                     cluster_rows = FALSE, cluster_cols = F))
-  return(p)
-}
-
-
-p.heat <- generateHeatmap(as.data.frame(t(assay(cells, "norm"))), rownames(assay(cells, "norm")), colData(cells)$clusters)
-
-p.heat <- generateHeatmap(im, useMarkers, res.sce$clusters)
-
-p.heat <- generateHeatmap(im, useMarkers, labels)
-
-p.heat <- markerHeatmap(as.data.frame(t(assay(cells, "norm"))), markers = useMarkers, clusters = colData(cells)$clusters)
-
-
-labels <- colData(cells)$clusters
-data <- as.data.frame(t(assay(cells, "norm")))
-
-data <- data[!labels%in%c("cluster_22", "cluster_23"),]
-labels <- labels[!labels%in%c("cluster_22", "cluster_23")]
-
-p.heat <- generateHeatmap(data = data, markers = useMarkers, labels = labels)
-
+plotGroupedHeatmap(cells, useMarkers, group = "clusters", exprs_values = "norm", center = TRUE, scale = TRUE, zlim = c(-2,2))
 ```
 ```{r}
 sort(table(colData(cells)$clusters))
@@ -347,8 +279,8 @@ tab <- sweep(tab,2,colSums(tab), "/")
 
 imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
-testProp <- apply((tab[imagesToUse,]), 2, function(x){
- test <- t.test(x ~ clinical[imagesToUse, "Status"])
+testProp <- apply(sqrt(tab[imagesToUse,]), 2, function(x){
+ test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
  signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
 })
 
@@ -356,7 +288,7 @@ testProp <- as.data.frame(t(testProp))
 testProp$cluster <- rownames(testProp)
 testProp$adjPval <- signif(p.adjust(testProp$pval, "fdr"),2)
 testProp <- testProp[order(testProp$pval),]
-
+testProp
 
 boxplot(tab[imagesToUse,rownames(testProp)[1]]~clinical[imagesToUse, "Status"])
 
@@ -366,12 +298,13 @@ boxplot(tab[imagesToUse,rownames(testProp)[1]]~clinical[imagesToUse, "Status"])
 
 set.seed(51773)
 cells <- runUMAP(cells, subset_row = useMarkers, exprs_values = "norm")
-plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(1,20,40,50,60)]], dimred="UMAP", colour_by="imageID")
+plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(c(1,20,40,50,60),c(1,20,40,50,60)+2)]], dimred="UMAP", colour_by="imageID")
+plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(c(1,20,40,50,60),c(1,20,40,50,60)+2)]], dimred="UMAP", colour_by="clusters")
 ```
 
 
 ```{r}
-cells <- lisaClust::lisaClust(cells[, !cells$clusters %in% c("cluster_22", "cluster_23")], k = 10, Rs = c(20,50,100), spatialCoords = c("m.cx", "m.cy"), cellType = "clusters", BPPARAM = BPPARAM)
+cells <- lisaClust::lisaClust(cells, k = 5, Rs = c(20,50,100), spatialCoords = c("m.cx", "m.cy"), cellType = "clusters", BPPARAM = BPPARAM)
 
 
 
@@ -398,7 +331,7 @@ tab <- sweep(tab,2,colSums(tab), "/")
 imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
 testRegion <- apply((tab[imagesToUse,]), 2, function(x){
- test <- t.test(x ~ clinical[imagesToUse, "Status"])
+ test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
  signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
 })
 

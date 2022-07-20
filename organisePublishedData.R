@@ -8,19 +8,20 @@ dir.create("Data")
 dir.create("Data/images")
 pathToImages <- "/dski/nobackup/biostat/datasets/spatial/Risom2022_BreastCancer_IMC/data/Imaged_Data/raw_tifs_masks"
 patients <- dir(pathToImages)
-patients <- patients[-grep("Normal",patients)]
+#patients <- patients[-grep("Normal",patients)]
 patients <- patients[-grep("Tonsil",patients)]
 
 
 tmp <- sapply(patients, function(patient){
   files <- list.files(paste0(pathToImages,"/",patient,"/TIFs"))
-  files <- setdiff(files, c("Au.tif", "Aumask.tiff", "Background.tif", "C.tif", "Ca40.tif"))
+  files <- setdiff(files, c("Au.tif", "Aumask.tiff", "Background.tif", "C.tif", "Ca40.tif", 
+                            "140empty", "Na", "Ta"))
   dir.create(paste0("Data/images/",patient))
   file.copy(paste0(pathToImages,"/",patient,"/TIFs/", files),paste0("Data/images/",patient,"/",files))
 })
 
 file.rename("Data/images/Point6202_pt1027_20594", "Data/images/Point6202_pt1026_20594")
-
+file.rename("Data/images/Point4142_pt2008_Normal", "Data/images/Point4142_pt2008_Nlbr5_Normal")
 
 # tmp <- sapply(patients, function(patient){
 # files <- list.files(paste0(pathToImages,"/",patient,"/TIFs"))
@@ -30,7 +31,7 @@ file.rename("Data/images/Point6202_pt1027_20594", "Data/images/Point6202_pt1026_
 # write.csv(dimnames(img)[3], file = "Data/images/channelNames.csv")
 # })
 
-file.rename("Data/images/Point6202_pt1027_20594.tiff", "Data/images/Point6202_pt1026_20594.tiff")
+#file.rename("Data/images/Point6202_pt1027_20594.tiff", "Data/images/Point6202_pt1026_20594.tiff")
 
 
 
