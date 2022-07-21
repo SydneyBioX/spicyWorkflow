@@ -19,7 +19,13 @@ library(FuseSOM)
 library(ggpubr)
 library(scater)
 library(spicyR)
+library(ClassifyR, lib.loc = "~/localPackages/")
+library(scFeatures)
 library(lisaClust)
+
+
+#withr::with_libpaths(new = "~/localPackages/", devtools::install_github("SydneyBioX/ClassifyR"))
+
 ```
 # Global paramaters
 ```{r}
@@ -108,7 +114,7 @@ masks <- simpleSeg(images,
 ## Visualise separation
 
 ```{r}
-#display(colorLabels(masks[[1]]))
+display(colorLabels(masks[[1]]))
 
 ```
 
@@ -179,8 +185,8 @@ cells <- cytomapper::measureObjects(masks,
 
 ```{r}
 
-cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
-cells <- normalizeCells(cells,transformation = "sqrt", method = c("99perc"), assayIn = "norm")
+#cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
+cells <- normalizeCells(cells,transformation = 1, method = c("meandiv"), assayIn = "counts")
 
 
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
@@ -190,46 +196,46 @@ df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
 
 
 
-```{r}
+<!-- ```{r} -->
 
-source("scMerge2.R")
+<!-- source("scMerge2.R") -->
 
-#sc merge
-use_bpparam <- BiocParallel::MulticoreParam(workers = nCores)
-use_bsparam <- BiocSingular::RandomParam()
-use_bnparam <- BiocNeighbors::AnnoyParam()
-# dat_sub <- dat[sample(nrow(dat), 500000), ]
-# ctl_genes <- rownames(sce)
-exprsMat <- assay(cells, "norm")
-batch <- cells$imageID
-colnames(exprsMat) <- seq_len(ncol(exprsMat))
-markers <- rownames(cells)
-scMerge_res <- scMerge2(exprsMat = exprsMat, #the exprs matrix to be normalised
-                        batch = batch, # batch labels
-                        cellTypes = NULL, # set NULL clustering will be performed within scMerge2... can also try the published cell type labels, which will match between the cell types
-                        use_bpparam = use_bpparam,
-                        use_bsparam = use_bsparam,
-                        use_bnparam = use_bnparam,
-                        ruvK = 2, # Number of unwanted variation to be removed
-                        ctl = markers, # negative control genes
-                        k_psuedoBulk = 5, # Number of pseudo bulk to be created for each cell type each batch
-                        k_celltype = 20, # Number of neighbours when perform graph clustering
-                        pseudoBulk_fn = create_pseudoBulk, # ways of constructing pseudo bulk
-                        ncores = nCores,
-                        chosen.hvg = markers, #Highly variable genes to be used to identify pseudo-replicates... since IMC has very few features, using all features.
-                        cosineNorm = F,
-                        return_subset = FALSE,
-                        normalised = T)
+<!-- #sc merge -->
+<!-- use_bpparam <- BiocParallel::MulticoreParam(workers = nCores) -->
+<!-- use_bsparam <- BiocSingular::RandomParam() -->
+<!-- use_bnparam <- BiocNeighbors::AnnoyParam() -->
+<!-- # dat_sub <- dat[sample(nrow(dat), 500000), ] -->
+<!-- # ctl_genes <- rownames(sce) -->
+<!-- exprsMat <- as.data.frame(assay(cells, "norm")) -->
+<!-- batch <- cells$imageID -->
+<!-- colnames(exprsMat) <- seq_len(ncol(exprsMat)) -->
+<!-- markers <- rownames(cells) -->
+<!-- scMerge_res <- scMerge2(exprsMat = exprsMat, #the exprs matrix to be normalised -->
+<!--                         batch = batch, # batch labels -->
+<!--                         cellTypes = NULL, # set NULL clustering will be performed within scMerge2... can also try the published cell type labels, which will match between the cell types -->
+<!--                         use_bpparam = use_bpparam, -->
+<!--                         use_bsparam = use_bsparam, -->
+<!--                         use_bnparam = use_bnparam, -->
+<!--                         ruvK = 2, # Number of unwanted variation to be removed -->
+<!--                         ctl = markers, # negative control genes -->
+<!--                         k_psuedoBulk = 5, # Number of pseudo bulk to be created for each cell type each batch -->
+<!--                         k_celltype = 20, # Number of neighbours when perform graph clustering -->
+<!--                         pseudoBulk_fn = create_pseudoBulk, # ways of constructing pseudo bulk -->
+<!--                         ncores = nCores, -->
+<!--                         chosen.hvg = markers, #Highly variable genes to be used to identify pseudo-replicates... since IMC has very few features, using all features. -->
+<!--                         cosineNorm = F, -->
+<!--                         return_subset = FALSE, -->
+<!--                         normalised = T) -->
 
-assay(cells, "scMerge2", withDimnames=FALSE) <- t(scMerge_res$newY)
+<!-- assay(cells, "scMerge2", withDimnames=FALSE) <- t(scMerge_res$newY) -->
 
-```
+<!-- ``` -->
 
-```{r}
-df <- as.data.frame(cbind(as.data.frame(colData(cells)), t(assay(cells, "scMerge2"))))
- ggplot(df, aes(x = (CD45), colour = imageID)) + geom_density() + theme(legend.position = "none")
+<!-- ```{r} -->
+<!-- df <- as.data.frame(cbind(as.data.frame(colData(cells)), t(assay(cells, "scMerge2")))) -->
+<!--  ggplot(df, aes(x = (CD45), colour = imageID)) + geom_density() + theme(legend.position = "none") -->
 
-```
+<!-- ``` -->
 
 
 
@@ -248,9 +254,10 @@ useMarkers <- c("PanKRT", "ECAD", "CD45", "CK7", "VIM", "FAP", "CK5", "CD36",
                 "HLADRDPDQ", "SMA")
 
 
-cells <- runFuseSOM(cells, assay = 'norm', numClusters = 20)
+cells <- runFuseSOM(cells, assay = 'norm', numClusters = 30)
 
 ```
+
 
 
 ## Check how many clusters should be used.
@@ -265,15 +272,25 @@ optiPlot(cells, method = "silhouette")
 
 
 ```{r}
-plotGroupedHeatmap(cells, useMarkers, group = "clusters", exprs_values = "norm", center = TRUE, scale = TRUE, zlim = c(-2,2))
+plotGroupedHeatmap(cells, 
+                   features = useMarkers, 
+                   group = "clusters", 
+                   exprs_values = "norm", 
+                   center = TRUE, 
+                   scale = TRUE, 
+                   zlim = c(-2,2))
 ```
+
+
 ```{r}
 sort(table(colData(cells)$clusters))
 
 ```
+
+
 ```{r}
 tab <- table(cells$imageID, cells$clusters)
-tab <- sweep(tab,2,colSums(tab), "/")
+tab <- sweep(tab,1,rowSums(tab), "/")
 
 
 
@@ -303,15 +320,59 @@ plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)
 ```
 
 
+
+
+# spicyR: test spatial relationships
+
 ```{r}
-cells <- lisaClust::lisaClust(cells, k = 5, Rs = c(20,50,100), spatialCoords = c("m.cx", "m.cy"), cellType = "clusters", BPPARAM = BPPARAM)
+
+segCells <- SegmentedCells(colData(cells), spatialCoords = c("m.cx", "m.cy"), cellTypeString = "clusters")
+imagePheno(segCells) <- clinical[rownames(segCells),]
+spicyTest <- spicy(segCells[imagePheno(segCells)$Status%in%c("nonprogressor", "progressor"),], condition = "Status", Rs = c(20, 50, 100), sigma = 50 )
+topPairs(spicyTest, n = 10)
+```
+
+
+
+```{r}
+
+test <- spicyTest
+size <- -log10(test$p.value[,2])
+groupA <- test$coefficient[,1]*sqrt(pi)*2/sqrt(10)/100
+groupB <- (test$coefficient[,1] + test$coefficient[,2])*sqrt(pi)*2/sqrt(10)/100
+cellTypeA <- unlist(lapply(strsplit(rownames(test$statistic), "__"), function(x)x[1]))
+cellTypeB <- unlist(lapply(strsplit(rownames(test$statistic), "__"), function(x)x[2]))
+
+df <- data.frame(cellTypeA, cellTypeB, groupA, groupB, size, stat = test$statistic[,2], pvalue = test$p.value[,2], sig = test$p.value[,2] < 0.05)
+rownames(df) <- rownames(test$statistic)
+
+library(ggnewscale)
+
+shape.legend = c(NP = "\U25D6", P = "\U25D7")
+
+df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1), condition = c("NP", "P"))
+
+ggplot(df, aes(x = cellTypeA, y = cellTypeB, size = size)) + scale_colour_gradient2(low ="#4575B4", mid = "white", high = "#D73027", midpoint = 0, breaks = c(-1.66, -1, 0, 1, 2, 3, 4), labels = c("avoidance", -1, 0, 1, 2, 3, "interaction")) + geom_point(aes(colour = pmin(groupA, 4)), shape="\u25D0") + geom_point(aes(colour = pmin(groupB, 2)), shape="\u25D1") + geom_point(data= df.shape, aes(shape = condition))+ scale_shape_manual(values = shape.legend) +
+guides(shape = guide_legend(override.aes = list(size=5))) + labs(colour = "Localisation", shape = "Condition") + new_scale_color() + geom_point(shape=1, aes(colour = factor(sig))) + scale_color_manual(values = c("TRUE" = "black", "FALSE" = "white"), labels = c("p-value < 0.05", "")) + theme_classic() + theme( axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) + labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = "") +
+guides(colour = guide_legend(override.aes = list(size=5)))
+
+
+```
+
+# lisaClust: Find cellular neighbourhoods
+
+```{r}
+cells <- lisaClust::lisaClust(cells, k = 7, Rs = c(20,50,100), spatialCoords = c("m.cx", "m.cy"), cellType = "clusters", BPPARAM = BPPARAM)
 
 
 
 ```
+
+
+
 ```{r, fig.height= 7, fig.width=9}
 df <- as.data.frame(colData(cells))
-df <- df[df$imageID == "Point3114_pt1081_31667",]#unique(df$imageID)[2], ]
+df <- df[df$imageID == "Point4106_pt1162_30997",]#unique(df$imageID)[2], ]
 p <- ggplot(df,aes(x = m.cx, y = m.cy, colour = clusters, region = region)) + 
   geom_point() +
   geom_hatching(window = "square") + 
@@ -324,7 +385,7 @@ p
 
 ```{r}
 tab <- table(cells$imageID, cells$region)
-tab <- sweep(tab,2,colSums(tab), "/")
+tab <- sweep(tab,1,rowSums(tab), "/")
 
 
 
@@ -348,35 +409,163 @@ boxplot(tab[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"]
 
 
 ```{r}
-tab <- table(cells$clusters, cells$region)
-tab <- sweep(tab,2,colSums(tab), "/")
-round(tab,2)
+tab <- table(cells$region,cells$clusters)
+tab = tab/rowSums(tab)%*%t(colSums(tab))*sum(tab)
+ph <- pheatmap::pheatmap(pmin(tab,3))
+```
+
+# scFeatures: Test some different features
+
+```{r}
+
+cells$celltype <- cells$clusters
+cells$sample <- cells$imageID
+assay(cells, "logcounts") <- assay(cells, "norm")
+data <- Seurat::as.Seurat(cells)
+data@assays$RNA <- data@assays$originalexp
+prop <- scFeatures(data, feature_types = c("proportion_raw", "gene_mean_celltype"))
+
 ```
 
 
 
 ```{r}
-as.data.frame(colData(cells)[colData(cells)$imageID == "Point2203_pt1072_31606",]) |>
-ggplot(aes(m.cx, m.cy, colour = clusters)) + geom_point()
+imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
+
+
+tests <- apply((prop$feature_proportion_raw[imagesToUse,]), 2, function(x){
+ test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
+ signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
+})
+
+tests <- as.data.frame(t(tests))
+tests$cluster <- rownames(tests)
+tests$adjPval <- signif(p.adjust(tests$pval, "fdr"),2)
+tests <- tests[order(tests$pval),]
+tests
+
+
+
+
+
+tests <- apply((prop$feature_gene_mean_celltype[imagesToUse,]), 2, function(x){
+ test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
+ signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
+})
+
+tests <- as.data.frame(t(tests))
+tests$cluster <- rownames(tests)
+tests$adjPval <- signif(p.adjust(tests$pval, "fdr"),2)
+tests <- tests[order(tests$pval),]
+tests
+```
+
+
+# ClassifyR: Classification
+
+
+```{r}
+imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
+
+data <- prop
+data <- lapply(prop, function(x)x[imagesToUse,])
+data <- lapply(data, as.data.frame)
+
+
+tab <- table(cells$imageID, cells$region)
+tab <- sweep(tab,1,rowSums(tab), "/")
+tab <- unclass(tab)
+
+data[["regions"]] <- data.frame(tab[imagesToUse,])
+
+
+
+cv <- crossValidate(measurements = data, 
+                    classes = clinical[imagesToUse, "Status"],
+                    multiViewMethod = "merge",
+                    nCores = nCores,
+                    nFeatures = 10)
+
+performancePlot(cv, characteristicsList = list(x = "Classifier Name", fillColour = "characteristicsLabel"))
+
+getAUC <- function(d){
+  sapply(split(d@predictions, d@predictions$fold), function(x){
+  cvAUC::AUC(x$progressor, clinical[x$sample,"Status"])
+    })
+}
+
+perf <- lapply(cv, getAUC)
+boxplot(perf)
 
 ```
 
-```{r}
-im <- read.csv("../../../Downloads/Single_Cell_Data (3).csv")
 
+# Check out the published data
+
+
+```{r}
+im <- read.csv("Single_Cell_Data.csv")
+im <- im |>
+  mutate(imageID = paste0("Point", Point_Num))
+
+
+
+cellCountsMine <- table(cells$imageID)
 cellCountsTheirs <- table(im$Point_Num)
 names(cellCountsMine) <- unlist(lapply(strsplit(names(cellCountsMine), "_"),function(x)x[1]))
 names(cellCountsTheirs) <- paste0("Point", names(cellCountsTheirs))
 
 plot(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), col = 0)
 text(as.numeric(cellCountsMine), as.numeric(cellCountsTheirs[names(cellCountsMine)]), names(cellCountsMine))
+
 abline(0,1)
 
-x <- readImage("Point2203_labels.tiff")
-w <- sapply(unique(x), function(i)colMeans(which(x==i, arr.ind = TRUE)))
+
 ```
 
+
+
 ```{r}
-display(colorLabels(masks[[grep("3104",names(masks))]]))
+
+convert <- imagesToUse
+names(convert) <- unlist(lapply(strsplit(imagesToUse, "_"),function(x)x[1]))
+
+im$imageID <- convert[paste0("Point",im$Point_Num)]
+
+
+data <- list()
+tab <- table(im$imageID, im$phenotype)
+tab <- sweep(tab,1,rowSums(tab), "/")
+tab <- unclass(tab)
+
+data[["prop"]] <- data.frame(tab[imagesToUse,])
+
+
+
+cv2 <- crossValidate(measurements = data, 
+                    classes = clinical[imagesToUse, "Status"],
+                    multiViewMethod = "merge",
+                    nCores = nCores,
+                    nFeatures = 10)
+
+label <- 
+  
+getAUC <- function(d){
+  sapply(split(d@predictions, d@predictions$fold), function(x){
+  cvAUC::AUC(x$progressor, clinical[x$sample,"Status"])
+    })
+}
+
+perf <- lapply(cv2, getAUC)
+boxplot(perf)
+
+
+
+
+
 ```
+
+
+
+
 
