@@ -186,7 +186,8 @@ cells <- cytomapper::measureObjects(masks,
 ```{r}
 
 #cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
-cells <- normalizeCells(cells,transformation = 1, method = c("meandiv"), assayIn = "counts")
+cells <- normalizeCells(cells, transformation = NULL, method = c("meandiv"), assayIn = "counts")
+
 
 
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
@@ -254,7 +255,7 @@ useMarkers <- c("PanKRT", "ECAD", "CD45", "CK7", "VIM", "FAP", "CK5", "CD36",
                 "HLADRDPDQ", "SMA")
 
 
-cells <- runFuseSOM(cells, assay = 'norm', numClusters = 30)
+cells <- runFuseSOM(cells, markers = useMarkers, assay = 'norm', numClusters = 20)
 
 ```
 
