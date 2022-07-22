@@ -1,5 +1,7 @@
-.Rproj.user
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
 h5Files/
+spicyWorkflow_cache/
+spicyWorkflow_files/

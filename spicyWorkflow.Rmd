@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE, warning = FALSE, cache.lazy = FALSE)
 ```
 
 
@@ -98,15 +98,12 @@ clinical <- clinical[names(images), ]
 
 ## Run simpleSeg
 ```{r}
-
-
 masks <- simpleSeg(images,
                    nucleus = c("PCA", "HH3"),
                    cellBody = "dilate",
                    sizeSelection = 40,
                    discSize = 3,
-                   cores = nCores,
-                   tolerance = NULL)
+                   cores = nCores)
 
 ```
 
@@ -186,7 +183,7 @@ cells <- cytomapper::measureObjects(masks,
 ```{r}
 
 #cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
-cells <- normalizeCells(cells, transformation = NULL, method = c("meandiv"), assayIn = "counts")
+cells <- normalizeCells(cells, transformation = NULL, method = c("perc99"), assayIn = "counts")
 
 
 
@@ -290,25 +287,13 @@ sort(table(colData(cells)$clusters))
 
 
 ```{r}
-tab <- table(cells$imageID, cells$clusters)
-tab <- sweep(tab,1,rowSums(tab), "/")
-
-
-
 imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
-testProp <- apply(sqrt(tab[imagesToUse,]), 2, function(x){
- test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
- signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
-})
+prop <- getProp(cells, feature = "region")
+testProp <- colTest(prop[imagesToUse,], condition = clinical[imagesToUse, "Status"])
 
-testProp <- as.data.frame(t(testProp))
-testProp$cluster <- rownames(testProp)
-testProp$adjPval <- signif(p.adjust(testProp$pval, "fdr"),2)
-testProp <- testProp[order(testProp$pval),]
 testProp
-
-boxplot(tab[imagesToUse,rownames(testProp)[1]]~clinical[imagesToUse, "Status"])
+boxplot(prop[imagesToUse,rownames(testProp)[1]]~clinical[imagesToUse, "Status"])
 
 ```
 
@@ -329,7 +314,7 @@ plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)
 
 segCells <- SegmentedCells(colData(cells), spatialCoords = c("m.cx", "m.cy"), cellTypeString = "clusters")
 imagePheno(segCells) <- clinical[rownames(segCells),]
-spicyTest <- spicy(segCells[imagePheno(segCells)$Status%in%c("nonprogressor", "progressor"),], condition = "Status", Rs = c(20, 50, 100), sigma = 50 )
+spicyTest <- spicy(segCells[imagePheno(segCells)$Status%in%c("nonprogressor", "progressor"),], condition = "Status", Rs = c(20, 50, 100))
 topPairs(spicyTest, n = 10)
 ```
 
@@ -337,26 +322,7 @@ topPairs(spicyTest, n = 10)
 
 ```{r}
 
-test <- spicyTest
-size <- -log10(test$p.value[,2])
-groupA <- test$coefficient[,1]*sqrt(pi)*2/sqrt(10)/100
-groupB <- (test$coefficient[,1] + test$coefficient[,2])*sqrt(pi)*2/sqrt(10)/100
-cellTypeA <- unlist(lapply(strsplit(rownames(test$statistic), "__"), function(x)x[1]))
-cellTypeB <- unlist(lapply(strsplit(rownames(test$statistic), "__"), function(x)x[2]))
-
-df <- data.frame(cellTypeA, cellTypeB, groupA, groupB, size, stat = test$statistic[,2], pvalue = test$p.value[,2], sig = test$p.value[,2] < 0.05)
-rownames(df) <- rownames(test$statistic)
-
-library(ggnewscale)
-
-shape.legend = c(NP = "\U25D6", P = "\U25D7")
-
-df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1), condition = c("NP", "P"))
-
-ggplot(df, aes(x = cellTypeA, y = cellTypeB, size = size)) + scale_colour_gradient2(low ="#4575B4", mid = "white", high = "#D73027", midpoint = 0, breaks = c(-1.66, -1, 0, 1, 2, 3, 4), labels = c("avoidance", -1, 0, 1, 2, 3, "interaction")) + geom_point(aes(colour = pmin(groupA, 4)), shape="\u25D0") + geom_point(aes(colour = pmin(groupB, 2)), shape="\u25D1") + geom_point(data= df.shape, aes(shape = condition))+ scale_shape_manual(values = shape.legend) +
-guides(shape = guide_legend(override.aes = list(size=5))) + labs(colour = "Localisation", shape = "Condition") + new_scale_color() + geom_point(shape=1, aes(colour = factor(sig))) + scale_color_manual(values = c("TRUE" = "black", "FALSE" = "white"), labels = c("p-value < 0.05", "")) + theme_classic() + theme( axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) + labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = "") +
-guides(colour = guide_legend(override.aes = list(size=5)))
-
+signifPlot(spicyTest)
 
 ```
 
@@ -373,7 +339,7 @@ cells <- lisaClust::lisaClust(cells, k = 7, Rs = c(20,50,100), spatialCoords = c
 
 ```{r, fig.height= 7, fig.width=9}
 df <- as.data.frame(colData(cells))
-df <- df[df$imageID == "Point4106_pt1162_30997",]#unique(df$imageID)[2], ]
+df <- df[df$imageID == "Point6202_pt1026_20594",]#unique(df$imageID)[2], ]
 p <- ggplot(df,aes(x = m.cx, y = m.cy, colour = clusters, region = region)) + 
   geom_point() +
   geom_hatching(window = "square") + 
@@ -385,34 +351,21 @@ p
 
 
 ```{r}
-tab <- table(cells$imageID, cells$region)
-tab <- sweep(tab,1,rowSums(tab), "/")
-
-
 
 imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
-testRegion <- apply((tab[imagesToUse,]), 2, function(x){
- test <- wilcox.test(x ~ clinical[imagesToUse, "Status"])
- signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
-})
+prop <- getProp(cells, feature = "region")
+testRegion <- colTest(prop[imagesToUse,], condition = clinical[imagesToUse, "Status"])
 
-testRegion <- as.data.frame(t(testRegion))
-testRegion$cluster <- rownames(testRegion)
-testRegion$adjPval <- signif(p.adjust(testRegion$pval, "fdr"),2)
-testRegion <- testRegion[order(testRegion$pval),]
 testRegion
-
-boxplot(tab[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"])
+boxplot(prop[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"])
 
 ```
 
 
 
-```{r}
-tab <- table(cells$region,cells$clusters)
-tab <- tab/rowSums(tab)%*%t(colSums(tab))*sum(tab)
-ph <- pheatmap::pheatmap(pmin(tab,3))
+```{r, fig.height=5, fig.width=5}
+regionMap(cells, cellType = "clusters", limit = c(0.2,5))
 ```
 
 # scFeatures: Test some different features
@@ -480,23 +433,24 @@ tab <- unclass(tab)
 data[["regions"]] <- data.frame(tab[imagesToUse,])
 
 
-
+set.seed(51773)
 cv <- crossValidate(measurements = data, 
-                    classes = clinical[imagesToUse, "Status"],
+                    outcomes = clinical[imagesToUse, "Status"],
                     multiViewMethod = "merge",
                     nCores = nCores,
-                    nFeatures = 10)
+                    nFeatures = 10,
+                    classifier = "elasticNetGLM")
 
 #performancePlot(cv, characteristicsList = list(x = "Classifier Name", fillColour = "characteristicsLabel"))
 
-getAUC <- function(d){
-  sapply(split(d@predictions, d@predictions$fold), function(x){
-  cvAUC::AUC(x$progressor, clinical[x$sample,"Status"])
-    })
-}
-
-perf <- lapply(cv, getAUC)
-boxplot(perf)
+# getAUC <- function(d){
+#   sapply(split(d@predictions, d@predictions$fold), function(x){
+#   cvAUC::AUC(x$progressor, clinical[x$sample,"Status"])
+#     })
+# }
+# 
+# perf <- lapply(cv, getAUC)
+# boxplot(perf)
 
 ```
 
