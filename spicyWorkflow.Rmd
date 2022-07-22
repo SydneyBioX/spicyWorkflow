@@ -411,7 +411,7 @@ boxplot(tab[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"]
 
 ```{r}
 tab <- table(cells$region,cells$clusters)
-tab = tab/rowSums(tab)%*%t(colSums(tab))*sum(tab)
+tab <- tab/rowSums(tab)%*%t(colSums(tab))*sum(tab)
 ph <- pheatmap::pheatmap(pmin(tab,3))
 ```
 
@@ -424,7 +424,7 @@ cells$sample <- cells$imageID
 assay(cells, "logcounts") <- assay(cells, "norm")
 data <- Seurat::as.Seurat(cells)
 data@assays$RNA <- data@assays$originalexp
-prop <- scFeatures(data, feature_types = c("proportion_raw", "gene_mean_celltype"))
+prop <- scFeatures(data, feature_types = c("proportion_raw", "gene_mean_celltype"), ncores = nCores )
 
 ```
 
@@ -487,7 +487,7 @@ cv <- crossValidate(measurements = data,
                     nCores = nCores,
                     nFeatures = 10)
 
-performancePlot(cv, characteristicsList = list(x = "Classifier Name", fillColour = "characteristicsLabel"))
+#performancePlot(cv, characteristicsList = list(x = "Classifier Name", fillColour = "characteristicsLabel"))
 
 getAUC <- function(d){
   sapply(split(d@predictions, d@predictions$fold), function(x){
