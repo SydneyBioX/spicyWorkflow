@@ -24,7 +24,7 @@ library(ClassifyR, lib.loc = "~/localPackages/")
 library(scFeatures)
 library(lisaClust)
 
-
+theme_set(theme_classic())
 #withr::with_libpaths(new = "~/localPackages/", devtools::install_github("SydneyBioX/ClassifyR"))
 
 ```
@@ -56,9 +56,6 @@ files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simpl
 # Read files with readImage from EBImage
 images <- lapply(files, EBImage::readImage, as.is = TRUE)
 
-# We've found it useful to sqrt transform our images
-images <- lapply(images, sqrt)
-
 ```
 
 We will make use of the `on_disk` option to convert our images to a `CytoImageList` with the images not held in memory.
@@ -69,13 +66,42 @@ We will make use of the `on_disk` option to convert our images to a `CytoImageLi
 
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
 dir.create("Data/h5Files")
-images <- CytoImageList(images, on_disk = TRUE, h5FilesPath = "Data/h5Files", BPPARAM = BPPARAM)
-mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
+images <- cytomapper::CytoImageList(images, 
+                                    on_disk = TRUE, 
+                                    h5FilesPath = "Data/h5Files", 
+                                    BPPARAM = BPPARAM)
 gc()
 
 # images <- cytomapper::loadImages("Data/h5Files/", pattern = "h5", h5FilesPath = "Data/h5Files/",on_disk = TRUE)
 # mcols(images) <- S4Vectors::DataFrame(imageID = names(images))
 ```
+
+# Load the clinical data
+
+## Read the clinical data
+```{r}
+
+clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
+clinical <- clinical |>
+  mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
+clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
+
+clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
+rownames(clinical) <- clinical$imageID
+
+```
+
+
+## Put the clinical data into the colData of SingleCellExperiment
+```{r}
+
+mcols(images) <- clinical[names(images), clinicalVariables]
+
+```
+
+
+
+
 
 
 # Segment the images
@@ -85,8 +111,9 @@ gc()
 masks <- simpleSeg(images,
                    nucleus = c("PCA", "HH3"),
                    cellBody = "dilate",
+                   transforms = "sqrt",
                    sizeSelection = 40,
-                   discSize = 5,
+                   discSize = 2,
                    cores = nCores)
 
 ```
@@ -95,24 +122,29 @@ masks <- simpleSeg(images,
 ## Visualise separation
 
 ```{r}
-display(colorLabels(masks[[1]]))
+EBImage::display(colorLabels(masks[[1]]))
 
 ```
 
 ## Visualise outlines
 
 ```{r}
-plotPixels(image = images[1:3], 
-           mask = masks[1:3], 
-           img_id = "imageID", 
-           colour_by = c("PanKRT", "GLUT1", "HH3", "CD3", "CD20"), 
-           display = "single",
-           colour = list(HH3 = c("black","blue"), 
-                         CD3 = c("black","purple"),
-                         CD20 = c("black","green"),
-                         GLUT1 = c("black", "red"),
-                         PanKRT = c("black", "yellow")),
-           legend = NULL)
+cytomapper::plotPixels(image = images[1:3], 
+                       mask = masks[1:3], 
+                       img_id = "imageID", 
+                       colour_by = c("PanKRT", "GLUT1", "HH3", "CD3", "CD20"), 
+                       display = "single",
+                       colour = list(HH3 = c("black","blue"), 
+                                     CD3 = c("black","purple"),
+                                     CD20 = c("black","green"),
+                                     GLUT1 = c("black", "red"),
+                                     PanKRT = c("black", "yellow")),
+                       bcg = list(HH3 = c(0, 1, 1.5), 
+                                     CD3 = c(0, 1, 1.5),
+                                     CD20 = c(0, 1, 1.5),
+                                     GLUT1 = c(0, 1, 1.5),
+                                     PanKRT = c(0, 1, 1.5)),
+                       legend = NULL)
 
 
 ```
@@ -131,55 +163,37 @@ cells <- cytomapper::measureObjects(masks,
 
 
 
-# Load the clinical data
-
-## Read the clinical data
-```{r}
-
-clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
-clinical <- clinical |>
-  mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
-clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
-
-clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
-rownames(clinical) <- clinical$imageID
-clinical <- clinical[names(images), ]
-
-```
-
-
-## Put the clinical data into the colData of SingleCellExperiment
-```{r}
-
-colData(cells) <- cbind(colData(cells), clinical[cells$imageID, clinicalVariables])
-
-
-```
 
 
 
 # Normalize data
 
 
-```{r}
+```{r, fig.width=5, fig.height=5}
 
   df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
-  ggplot(df, aes(x = (PanKRT), colour = imageID)) + geom_density() + theme(legend.position = "none")
+
+  ggplot(df, aes(x = PanKRT, colour = imageID)) + 
+    geom_density() + 
+    theme(legend.position = "none")
 
 ```
 
 
 
-```{r}
-
-#cells <- normalizeCells(cells, transformation = "sqrt", assayIn = "counts")
-#source("scMerge2.R")
-cells <- normalizeCells(cells, transformation = c("sqrt"), method = c("quant99", "minMax"), assayIn = "counts", cores = nCores)
-
+```{r, fig.width=5, fig.height=5}
+cells <- normalizeCells(cells, 
+                        transformation = "sqrt", 
+                        method = c("quant99", "minMax"), 
+                        assayIn = "counts", 
+                        cores = nCores)
 
 
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
- ggplot(df, aes(x = (PanKRT), colour = imageID)) + geom_density() + theme(legend.position = "none")
+
+ggplot(df, aes(x = PanKRT, colour = imageID)) + 
+  geom_density() + 
+  theme(legend.position = "none")
 
 ```
 
@@ -189,14 +203,16 @@ df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
 
 ## Perform the clustering
 ```{r}
-cells@metadata <- list()
 #The markers used in the original publication to gate cell types
-useMarkers <- c("PanKRT", "ECAD", "CD45", "CK7", "VIM", "FAP", "CK5", "CD36",
-                "CD31", "CD20", "CD4", "CD3", "CD8", "CD14", "CD11c", "CD68",
-                "HLADRDPDQ", "SMA")
+useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA", 
+                "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c", 
+                "HLADRDPDQ", "MPO", "Tryptase")
 
 set.seed(51773)
-cells <- runFuseSOM(cells, markers = useMarkers, assay = 'norm', numClusters = 25)
+cells <- runFuseSOM(cells, 
+                    markers = useMarkers, 
+                    assay = 'norm', 
+                    numClusters = 20)
 
 ```
 
@@ -214,38 +230,37 @@ optiPlot(cells, method = "gap")
 
 
 ```{r}
-plotGroupedHeatmap(cells, 
-                   features = useMarkers, 
-                   group = "clusters", 
-                   exprs_values = "norm", 
-                   center = TRUE, 
-                   scale = TRUE, 
-                   zlim = c(-2,2))
+scater::plotGroupedHeatmap(cells, 
+                           features = useMarkers, 
+                           group = "clusters", 
+                           exprs_values = "norm",
+                           center = TRUE, 
+                           scale = TRUE, 
+                           zlim = c(-3,3),
+                           cluster_rows = FALSE)
 ```
 
 
 ```{r}
-sort(table(colData(cells)$clusters))
-
-  
-
+colData(cells)$clusters |>
+  table() |>
+  sort()
 ```
 
 
 ```{r}
-imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 cellsToUse <- cells$Status%in%c("nonprogressor", "progressor")
 
 testProp <- colTest(cells[, cellsToUse], 
                     condition = "Status", 
-                    feature = "clusters",
-                    type = "ttest")
+                    feature = "clusters")
 
 testProp
 
 ```
 
 ```{r}
+imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
 prop <- getProp(cells, feature = "clusters")
 clusterToUse <- rownames(testProp)[1]
@@ -259,9 +274,17 @@ boxplot( prop[imagesToUse, clusterToUse] ~ clinical[imagesToUse, "Status"] )
 ```{r}
 
 set.seed(51773)
-cells <- runUMAP(cells, subset_row = useMarkers, exprs_values = "norm")
-plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(c(1,20,40,50,60),c(1,20,40,50,60)+2)]], dimred="UMAP", colour_by="imageID")
-plotReducedDim(cells[,colData(cells)$imageID %in% unique(colData(cells)$imageID)[c(c(1,20,40,50,60),c(1,20,40,50,60)+2)]], dimred="UMAP", colour_by="clusters")
+cells <- scater::runUMAP(cells, 
+                         subset_row = useMarkers, 
+                         exprs_values = "norm")
+
+someImages <- unique(colData(cells)$imageID)[c(1,10,20,40,50,60)]
+
+# UMAP by imageID
+plotReducedDim(cells[,colData(cells)$imageID %in% someImages], dimred="UMAP", colour_by="imageID")
+
+# UMAP by cell type cluster
+plotReducedDim(cells[,colData(cells)$imageID %in% someImages], dimred="UMAP", colour_by="clusters")
 ```
 
 
@@ -278,8 +301,8 @@ spicyTest <- spicy(cells[, cellsToUse],
                    Rs = c(20, 50, 100),
                    sigma = 50,
                    BPPARAM = BPPARAM)
-topPairs(spicyTest, n = 10)
 
+topPairs(spicyTest, n = 10)
 
 ```
 
@@ -287,17 +310,23 @@ topPairs(spicyTest, n = 10)
 
 ```{r}
 
-signifPlot(spicyTest)
+signifPlot(spicyTest,
+           breaks = c(-1.5, 3, 0.5))
+
 
 ```
 
 # lisaClust: Find cellular neighbourhoods
 
 ```{r}
-cells <- lisaClust(cells, k = 10, Rs = c(20,50,100), sigma = 50,
-                   spatialCoords = c("m.cx", "m.cy"), cellType = "clusters", BPPARAM = BPPARAM)
-
-
+set.seed(51773)
+cells <- lisaClust(cells, 
+                   k = 7, 
+                   Rs = c(20, 50, 100),
+                   sigma = 50,
+                   spatialCoords = c("m.cx", "m.cy"), 
+                   cellType = "clusters", 
+                   BPPARAM = BPPARAM)
 
 ```
 
@@ -305,25 +334,50 @@ cells <- lisaClust(cells, k = 10, Rs = c(20,50,100), sigma = 50,
 
 ```{r, fig.height= 7, fig.width=9}
 
+  df <- colData(cells) |> 
+  as.data.frame() |>
+  filter(imageID == "Point2206_pt1116_31620")
+  
+  ggplot(df, aes(x = m.cx, y = m.cy, colour = region)) +
+    geom_point()
+
+    
+  # ggplot(df, aes(x = m.cx, y = m.cy, colour = clusters, region = region)) +
+  #   geom_point() +
+  #   geom_hatching(window = "square", line.spacing = 41) +
+  #   scale_region_manual(values = c(region_1 = 1,
+  #                                  region_9 = 1,
+  #                                  region_10 = 2,
+  #                                  region_7 = 2,
+  #                                  region_2 = 3,
+  #                                  region_3 = 4,
+  #                                  region_4 = 4,
+  #                                  region_5 = 5,
+  #                                  region_8 = 6
+  #                                  ))
+    
+
+
 hatchingPlot(cells,
              useImages = "Point2206_pt1116_31620",
              cellType = "clusters",
              spatialCoords = c("m.cx", "m.cy"),
              window = "square",
-             nbp = 200
+             nbp = 300,
+             line.spacing = 41
             )
+
+
 ```
 
 
 ```{r}
 
-imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
-
-prop <- getProp(cells, feature = "region")
-testRegion <- colTest(prop[imagesToUse,], condition = clinical[imagesToUse, "Status"])
+testRegion <- colTest(cells[,cellsToUse], 
+                      feature = "region",
+                      condition = "Status")
 
 testRegion
-boxplot(prop[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"])
 
 
 ```
@@ -331,7 +385,7 @@ boxplot(prop[imagesToUse,rownames(testRegion)[1]]~clinical[imagesToUse, "Status"
 
 
 ```{r, fig.height=5, fig.width=5}
-regionMap(cells, cellType = "clusters", limit = c(0.2,5))
+regionMap(cells, cellType = "clusters", limit = c(0.2, 5))
 
 ```
 
@@ -347,6 +401,7 @@ data <- scFeatures(cells,
                    assay = "norm",
                    ncores = nCores )
 
+names(data) <- c("prop", "mean")
 
 
 ```
@@ -356,8 +411,8 @@ data <- scFeatures(cells,
 ```{r}
 imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
-test <- colTest(data$feature_gene_mean_celltype[imagesToUse,],
-        condition = clinical[imagesToUse, "Status"])
+test <- colTest(data$mean[imagesToUse,],
+                condition = clinical[imagesToUse, "Status"])
 
 test |> head()
 
@@ -368,28 +423,39 @@ test |> head()
 
 
 ```{r}
-imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
-
 
 data[["regions"]] <- getProp(cells, "region")
+
 data <- lapply(data, as.data.frame)
 
 #Subset data
 measurements <- lapply(data, function(x)x[imagesToUse, ])
-names(measurements) <- c("prop", "mean", "region")
 
 set.seed(51773)
 cv <- crossValidate(measurements = measurements, 
                     outcome = clinical[imagesToUse, "Status"],
-                    nCores = nCores,
-                    nFeatures = 20,
-                    classifier = "randomForest")
+                    nFeatures = 5,
+                    classifier = "elasticNetGLM",
+                    nFolds = 5,
+                    nRepeats = 100,
+                    nCores = nCores
+                    )
 
 ROCplot(cv, comparison = "Assay Name")
 
 
+performancePlot(cv,
+                performanceName = "AUC",
+                characteristicsList = list(x = "Assay Name"))
 
 ```
+
+
+
+
+
+
+
 
 
 <!-- # Check out the published data -->
