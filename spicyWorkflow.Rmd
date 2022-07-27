@@ -6,7 +6,6 @@ author:
 - name: Alexander Nicholls
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
-author:
 - name: Nicholas Canete
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
