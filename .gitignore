@@ -8,3 +8,5 @@ spicyWorkflow_files/
 spicyWorkflow.Rproj
 
 *.Rproj
+
+.vscode
