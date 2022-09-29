@@ -69,7 +69,7 @@ library(spicyR)
 library(ClassifyR)
 library(scFeatures)
 library(lisaClust)
-)
+})
 ```
 
 ```{r}
