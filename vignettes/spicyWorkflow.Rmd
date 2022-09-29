@@ -39,6 +39,8 @@ Before you begin, you should install all the relevant R packages. You can downlo
 - BiocManager::install("lisaClust")
 - BiocManager::install("spicyR")
 - BiocManager::install("ClassifyR")
+- BiocManager::install("cytomapper")
+- BiocManager::install("scater")
 - devtools::install_github("SydneyBioX/simpleSeg")
 - devtools::install_github("SydneyBioX/scFeatures")
 - devtools::install_github("ecool50/FuseSOM")
