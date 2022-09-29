@@ -4,8 +4,8 @@ library(EBImage)
 # https://doi.org/10.1016/j.cell.2021.12.023
 # Images are downloaded from https://data.mendeley.com/datasets/d87vg86zd8
 
-dir.create("Data")
-dir.create("Data/images")
+dir.create("../data")
+dir.create("../data/images")
 pathToImages <- "/dski/nobackup/biostat/datasets/spatial/Risom2022_BreastCancer_IMC/data/Imaged_Data/raw_tifs_masks"
 patients <- dir(pathToImages)
 #patients <- patients[-grep("Normal",patients)]
@@ -16,12 +16,12 @@ tmp <- sapply(patients, function(patient){
   files <- list.files(paste0(pathToImages,"/",patient,"/TIFs"))
   files <- setdiff(files, c("Au.tif", "Aumask.tiff", "Background.tif", "C.tif", "Ca40.tif", 
                             "140empty", "Na", "Ta"))
-  dir.create(paste0("Data/images/",patient))
-  file.copy(paste0(pathToImages,"/",patient,"/TIFs/", files),paste0("Data/images/",patient,"/",files))
+  dir.create(paste0("../data/images/",patient))
+  file.copy(paste0(pathToImages,"/",patient,"/TIFs/", files),paste0("../data/images/",patient,"/",files))
 })
 
-file.rename("Data/images/Point6202_pt1027_20594", "Data/images/Point6202_pt1026_20594")
-file.rename("Data/images/Point4142_pt2008_Normal", "Data/images/Point4142_pt2008_Nlbr5_Normal")
+file.rename("../data/images/Point6202_pt1027_20594", "Data/images/Point6202_pt1026_20594")
+file.rename("../data/images/Point4142_pt2008_Normal", "Data/images/Point4142_pt2008_Nlbr5_Normal")
 
 # tmp <- sapply(patients, function(patient){
 # files <- list.files(paste0(pathToImages,"/",patient,"/TIFs"))
