@@ -56,7 +56,8 @@ Before you begin, you should install all the relevant R packages. You can downlo
 
 
 
-```{r message=FALSE}
+```{r, echo=FALSE, results="hide", warning=FALSE}
+suppressPackageStartupMessages({
 library(cytomapper)
 library(dplyr)
 library(ggplot2)
@@ -68,6 +69,7 @@ library(spicyR)
 library(ClassifyR)
 library(scFeatures)
 library(lisaClust)
+)
 ```
 
 
