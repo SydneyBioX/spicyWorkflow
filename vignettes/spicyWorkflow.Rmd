@@ -32,6 +32,14 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE, warning = FALS
 library(BiocStyle)
 ```
 
+# Version Info
+
+<p>
+**R version**: `r R.version.string`
+<br />
+**Bioconductor version**: `r BiocManager::version()`
+<br />
+
 # Loading R packages
 
 Before you begin, you should install all the relevant R packages. You can download our packages as follows...
