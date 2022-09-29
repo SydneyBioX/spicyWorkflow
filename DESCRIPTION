@@ -26,3 +26,4 @@ biocViews: EBImage,
 Suggests: knitr, rmarkdown, BiocStyle
 NeedsCompilation: no
 URL: https://github.com/SydneyBioX/spicyWorkflow
+BiocType: Workflow
