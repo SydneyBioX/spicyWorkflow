@@ -38,9 +38,9 @@ Before you begin, you should install all of the relevent R packages. You can dow
 - BiocManager::install(version='devel')
 - BiocManager::install("lisaClust")
 - BiocManager::install("spicyR")
+- BiocManager::install("ClassifyR")
 - devtools::install_github("SydneyBioX/simpleSeg")
 - devtools::install_github("SydneyBioX/scFeatures")
-- devtools::install_github("SydneyBioX/ClassifyR")
 - devtools::install_github("ecool50/FuseSOM")
 
 
