@@ -17,6 +17,7 @@ author:
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
+date: 27 July, 2022
 vignette: >
   %\VignetteIndexEntry{"Introduction to a spicy workflow"}
   %\VignetteEngine{knitr::rmarkdown}
