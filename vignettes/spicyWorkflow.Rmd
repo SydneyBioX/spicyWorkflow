@@ -72,6 +72,20 @@ library(lisaClust)
 )
 ```
 
+```{r}
+library(cytomapper)
+library(dplyr)
+library(ggplot2)
+library(simpleSeg)
+library(FuseSOM)
+library(ggpubr)
+library(scater)
+library(spicyR)
+library(ClassifyR)
+library(scFeatures)
+library(lisaClust)
+```
+
 
 # Global paramaters
 
