@@ -1,0 +1,28 @@
+Package: spicyWorkflow
+Title: Performing a spatial analysis of multiplexed tissue imaging data.
+Version: 1.0.0
+Date: 2022-07-27
+Authors@R: c(
+    person("Alexander","Nicholls",role=c("aut", "cre"), email = "anic0077@uni.sydney.edu.au"),
+    person("Ellis","Patrick",role=c("aut", "cre"), email = "ellis.patrick@sydney.edu.au")
+    )
+Description: spicyWorkflow provides an overview of how to use our very spicy workflow for 
+    performing analysis of highly multiplexed in situ imaging cytometry assays such as IMC, 
+    CODEX and MIBI-TOF.
+Depends: devtools,
+         cytomapper,
+         ggplot2,
+         ggpubr
+License: GPL
+Encoding: UTF-8
+LazyData: false
+VignetteBuilder: knitr
+biocViews: EBImage,
+           lisaClust,
+           spicyR,
+           ClassifyR,
+           cytomapper,
+           scater
+Suggests: knitr, rmarkdown, BiocStyle
+NeedsCompilation: no
+URL: https://github.com/SydneyBioX/spicyWorkflow
