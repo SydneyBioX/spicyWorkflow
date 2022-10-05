@@ -3,6 +3,9 @@ title: "Performing a spatial analysis of multiplexed tissue imaging data."
 params:
   test: FALSE
 author:
+- name: Nicholas Robertson
+  affiliation:
+  - School of Mathematics and Statistics, University of Sydney, Australia
 - name: Alexander Nicholls
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
@@ -65,7 +68,7 @@ library(lisaClust)
 It is convenient to set the number of cores for running code in parallel. Please chose a number that is appropriate for your resources.
 
 ```{r}
-nCores <- 40
+nCores <- 20
 BPPARAM <- simpleSeg:::generateBPParam(nCores)
 
 theme_set(theme_classic())
@@ -321,7 +324,7 @@ We can check to see how reasonable our choice of 20 clusters is using the `estim
 
 # Generate metrics for estimating the number of clusters.
 # As I've already run runFuseSOM I don't need to run generateSOM().
-cells <- estimateNumCluster(cells, kseq = 2:30)
+cells <- estimateNumCluster(cells, kSeq = 2:30)
 optiPlot(cells, method = "gap")
 
 
