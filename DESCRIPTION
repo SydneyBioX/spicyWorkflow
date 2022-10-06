@@ -14,7 +14,6 @@ Imports: devtools,
          cytomapper,
          ggplot2,
          ggpubr,
-         EBImage,
          lisaClust,
          spicyR,
          ClassifyR,
@@ -22,6 +21,7 @@ Imports: devtools,
          scater,
          dplyr,
          simpleSeg
+Suggests: EBImage
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: false
