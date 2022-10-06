@@ -3,6 +3,9 @@ title: "Performing a spatial analysis of multiplexed tissue imaging data."
 params:
   test: FALSE
 author:
+- name: Nicholas Robertson
+  affiliation:
+  - School of Mathematics and Statistics, University of Sydney, Australia
 - name: Alexander Nicholls
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
@@ -104,6 +107,8 @@ In the following we will reanalyse some MIBI-TOF data [(Risom et al, 2022)](http
 
 The R code for this analysis is available on github [https://github.com/SydneyBioX/spicyWorkflow](https://github.com/SydneyBioX/spicyWorkflow). A mildly [processed](https://github.com/SydneyBioX/spicyWorkflow/blob/master/organisePublishedData.R) version of the data used in the manuscript is available in this repository. 
 
+
+
 # Read in images
 
 The images are stored in the `images` folder within the `Data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
@@ -129,8 +134,6 @@ We will make use of the `on_disk` option to convert our images to a `CytoImageLi
 
 ```{r}
 
-
-
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
 dir.create("Data/h5Files")
 images <- cytomapper::CytoImageList(images, 
@@ -141,6 +144,9 @@ gc()
 
 ```
 
+
+
+
 # Load the clinical data
 
 To associate features in our image with disease progression, it is important to read in information which links image identifiers to their progression status. We will do this here, making sure that our `imageID` match.
@@ -148,14 +154,18 @@ To associate features in our image with disease progression, it is important to 
 ```{r}
 # Read in clinical data, manipulate imageID and select columns
 clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
+
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
+
 clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
 
 clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
 rownames(clinical) <- clinical$imageID
 
 ```
+
+
 
 
 ## Put the clinical data into the colData of SingleCellExperiment
@@ -273,7 +283,7 @@ We can transform and normalise our data using the `normalizeCells` function. Her
 # Transform and normalise the marker expression of each cell type.
 # Use a square root transform, then trimmed the 99 quantile 
 cells <- normalizeCells(cells, 
-                        transformation = "sqrt", 
+                        transformation = "asinh", 
                         method = c("trim99", "minMax"), 
                         assayIn = "counts", 
                         cores = nCores)
@@ -282,7 +292,7 @@ cells <- normalizeCells(cells,
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
 
 # Plots densities of normalised PanKRT for each image.
-ggplot(df, aes(x = PanKRT, colour = imageID)) + 
+ggplot(df, aes(x = CD68, colour = imageID)) + 
   geom_density() + 
   theme(legend.position = "none")
 
@@ -298,6 +308,7 @@ Here we cluster using the `runFuseSOM` function. We have chosen to specify the s
 
 ## Perform the clustering
 ```{r}
+cells@metadata <- list()
 # The markers used in the original publication to gate cell types.
 useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA", 
                 "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c", 
@@ -311,23 +322,6 @@ cells <- runFuseSOM(cells,
                     markers = useMarkers, 
                     assay = 'norm', 
                     numClusters = 20)
-
-```
-
-
-
-## Check how many clusters should be used.
-
-We can check to see how reasonable our choice of 20 clusters is using the `estimateNumCluster` and the `optiPlot` functions. Here we examine the Gap method, others such as Silhouette and Within Cluster Distance are also available.
-
-
-```{r}
-
-# Generate metrics for estimating the number of clusters.
-# As I've already run runFuseSOM I don't need to run generateSOM().
-cells <- estimateNumCluster(cells, kseq = 2:30)
-optiPlot(cells, method = "gap")
-
 
 ```
 
@@ -346,6 +340,24 @@ scater::plotGroupedHeatmap(cells,
                            zlim = c(-3,3),
                            cluster_rows = FALSE)
 ```
+
+
+## Check how many clusters should be used.
+
+We can check to see how reasonable our choice of 20 clusters is using the `estimateNumCluster` and the `optiPlot` functions. Here we examine the Gap method, others such as Silhouette and Within Cluster Distance are also available.
+
+
+```{r}
+
+# Generate metrics for estimating the number of clusters.
+# As I've already run runFuseSOM I don't need to run generateSOM().
+cells <- estimateNumCluster(cells, kSeq = 2:30)
+optiPlot(cells, method = "gap")
+
+
+```
+
+
 
 
 ```{r}
@@ -457,6 +469,20 @@ cells <- lisaClust(cells,
 
 ```
 
+## Region - cell type enrichment heatmap
+
+We can try to interpret which spatial orderings the regions are quantifying using the `regionMap` function. This plots the frequency of each cell type in a region relative to what you would expect by chance.
+
+```{r, fig.height=5, fig.width=5}
+
+# Visualise the enrichment of each cell type in each region
+regionMap(cells, cellType = "clusters", limit = c(0.2, 5))
+
+```
+
+
+## Visualise regions
+
 By default, these identified regions are stored in the `regions` column in the `colData` of our object. We can quickly examine the spatial arrangement of these regions using `ggplot`.
 
 
@@ -476,7 +502,7 @@ ggplot(df, aes(x = m.cx, y = m.cy, colour = region)) +
 
 While much slower, we have also implemented a function for overlaying the region information as a hatching pattern so that the information can be viewed simultaneously with the cell type calls.
 
-```{r}
+```{r eval = FALSE}
 # Use hatching to visualise regions and cell types.
 hatchingPlot(cells,
              useImages = "Point2206_pt1116_31620",
@@ -527,16 +553,6 @@ testRegion
 
 ```
 
-## Region - cell type enrichment heatmap
-
-We can try to interpret which spatial orderings the regions are quantifying using the `regionMap` function. This plots the frequency of each cell type in a region relative to what you would expect by chance.
-
-```{r, fig.height=5, fig.width=5}
-
-# Visualise the enrichment of each cell type in each region
-regionMap(cells, cellType = "clusters", limit = c(0.2, 5))
-
-```
 
 # scFeatures: Test some different features
 
@@ -561,6 +577,7 @@ names(data) <- c("prop", "mean")
 
 
 ```{r}
+imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
 
 # Test each marker-celltype for it's association with progression.
 test <- colTest(data$mean[imagesToUse,],
@@ -579,7 +596,7 @@ Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.
 
 
 
-```{r}
+```{r message=FALSE}
 
 # Add proportions of each region in each image
 # to the list of dataframes.
@@ -601,7 +618,13 @@ cv <- crossValidate(measurements = measurements,
                     nCores = nCores
                     )
 
+
 ```
+
+
+
+
+
 ## Visualise cross-validated prediction performance
 
 Here we use the `performancePlot` function to assess the AUC from each repeat of the 5-fold cross-validation. We see that the lisaClust regions appear to capture information which is predictive of progression status of the patients.
