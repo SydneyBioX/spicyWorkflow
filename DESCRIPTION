@@ -23,7 +23,6 @@ Imports: devtools,
 Suggests: knitr, rmarkdown, BiocStyle, EBImage
 License: GPL (>= 3)
 Encoding: UTF-8
-LazyData: false
 VignetteBuilder: knitr 
 NeedsCompilation: no
 URL: https://github.com/SydneyBioX/spicyWorkflow
