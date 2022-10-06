@@ -11,3 +11,4 @@ spicyWorkflow.Rproj
 *.html
 
 .vscode
+vignettes/scFeatures.txt
