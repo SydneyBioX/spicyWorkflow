@@ -74,7 +74,7 @@ library(lisaClust)
 })
 ```
 
-```{r}
+```{r, eval=FALSE}
 library(cytomapper)
 library(dplyr)
 library(ggplot2)
@@ -131,9 +131,7 @@ images <- lapply(files, EBImage::readImage, as.is = TRUE)
 We will make use of the `on_disk` option to convert our images to a `CytoImageList` with the images not held in memory.
 
 ```{r}
-
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
-dir.create("data/h5Files")
 images <- cytomapper::CytoImageList(images, 
                                     on_disk = TRUE, 
                                     h5FilesPath = "data/h5Files", 
