@@ -21,12 +21,11 @@ Imports: devtools,
          scater,
          dplyr,
          simpleSeg
-Suggests: EBImage
+Suggests: knitr, rmarkdown, BiocStyle, EBImage
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: false
 VignetteBuilder: knitr 
-Suggests: knitr, rmarkdown, BiocStyle
 NeedsCompilation: no
 URL: https://github.com/SydneyBioX/spicyWorkflow
 BugReports: https://github.com/SydneyBioX/spicyWorkflow/issues
