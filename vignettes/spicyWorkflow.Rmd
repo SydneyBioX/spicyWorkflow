@@ -85,7 +85,6 @@ library(ggpubr)
 library(scater)
 library(spicyR)
 library(ClassifyR)
-library(scFeatures)
 library(lisaClust)
 ```
 
@@ -553,39 +552,6 @@ testRegion
 
 ```
 
-
-# scFeatures: Test some different features
-
-scFeatures is an R package available on [https://github.com/SydneyBioX/scFeatures](https://github.com/SydneyBioX/scFeatures) that generates multi-view representations of single-cell and spatial data through the construction of a total of 17 feature types. Here we use it to quantify the proportions of each cell type in each image as well as the average expression of each marker on each cell type. `scFeatures` outputs a `list` of two `data.frame`s in this case. 
-
-```{r}
-
-# Use scFeatures to calculate proportions and the average marker abundance 
-# for each cell type.
-data <- scFeatures(cells, 
-                   feature_types = c("proportion_raw", "gene_mean_celltype"),
-                   sample = "imageID",
-                   celltype = "clusters",
-                   assay = "norm",
-                   ncores = nCores )
-
-names(data) <- c("prop", "mean")
-
-
-```
-
-
-
-```{r}
-imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
-
-# Test each marker-celltype for it's association with progression.
-test <- colTest(data$mean[imagesToUse,],
-                condition = clinical[imagesToUse, "Status"])
-
-test |> head()
-
-```
 
 
 # ClassifyR: Classification
