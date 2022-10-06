@@ -20,6 +20,7 @@ author:
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
+date: 27 July, 2022
 vignette: >
   %\VignetteIndexEntry{"Introduction to a spicy workflow"}
   %\VignetteEngine{knitr::rmarkdown}
@@ -34,21 +35,47 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE, warning = FALS
 library(BiocStyle)
 ```
 
+# Version Info
+
+<p>
+**R version**: `r R.version.string`
+<br />
+**Bioconductor version**: `r BiocManager::version()`
+<br />
+
 # Loading R packages
 
-Before you begin, you should install all of the relevent R packages. You can download our packages as follows...
+Before you begin, you should install all the relevant R packages. You can download our packages as follows...
 
 - BiocManager::install(version='devel')
 - BiocManager::install("lisaClust")
 - BiocManager::install("spicyR")
+- BiocManager::install("ClassifyR")
+- BiocManager::install("cytomapper")
+- BiocManager::install("scater")
 - devtools::install_github("SydneyBioX/simpleSeg")
 - devtools::install_github("SydneyBioX/scFeatures")
-- devtools::install_github("SydneyBioX/ClassifyR")
 - devtools::install_github("ecool50/FuseSOM")
 
 
 
-```{r message=FALSE}
+```{r, echo=FALSE, results="hide", warning=FALSE}
+suppressPackageStartupMessages({
+library(cytomapper)
+library(dplyr)
+library(ggplot2)
+library(simpleSeg)
+library(FuseSOM)
+library(ggpubr)
+library(scater)
+library(spicyR)
+library(ClassifyR)
+library(scFeatures)
+library(lisaClust)
+})
+```
+
+```{r}
 library(cytomapper)
 library(dplyr)
 library(ggplot2)
@@ -65,7 +92,7 @@ library(lisaClust)
 
 # Global paramaters
 
-It is convenient to set the number of cores for running code in parallel. Please chose a number that is appropriate for your resources.
+It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources.
 
 ```{r}
 nCores <- 20
@@ -84,7 +111,7 @@ The R code for this analysis is available on github [https://github.com/SydneyBi
 
 # Read in images
 
-The images are stored in the `images` folder within the `Data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all of the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
+The images are stored in the `images` folder within the `Data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
 
 
 ```{r}
@@ -219,7 +246,7 @@ cytomapper::plotPixels(image = images[1],
 
 # Summarise cell features.
 
-In order to charactise the phenotypes of each of the segmented cells, `measureObjects` from `cytomapper` will calculate the average intensity of each channel within each cell as well as a few morphological features. The channel intensities will be stored in the `counts assay` in a `SingleCellExperiment`. Information on the spatial location of each cell is stored in `colData` in the `m.cx` and `m.cy` columns. In addition to this, it will propogate the information we have store in the `mcols` of our `CytoImageList` in the `colData` of the resulting `SingleCellExperiment`. 
+In order to charactise the phenotypes of each of the segmented cells, `measureObjects` from `cytomapper` will calculate the average intensity of each channel within each cell as well as a few morphological features. The channel intensities will be stored in the `counts assay` in a `SingleCellExperiment`. Information on the spatial location of each cell is stored in `colData` in the `m.cx` and `m.cy` columns. In addition to this, it will propagate the information we have store in the `mcols` of our `CytoImageList` in the `colData` of the resulting `SingleCellExperiment`. 
 
 ```{r}
 # Summarise the experssion of each marker in each cell
@@ -300,7 +327,7 @@ cells <- runFuseSOM(cells,
 
 ## Attempt to interpret the phenotype of each cluster
 
-We can begin the process of understanding what each of these cell clusters are by using the `plotGroupedHeatmap` function from `scater`. At the least, here we can see we capture all of the major immune populations that we expect to see.
+We can begin the process of understanding what each of these cell clusters are by using the `plotGroupedHeatmap` function from `scater`. At the least, here we can see we capture all the major immune populations that we expect to see.
 
 ```{r}
 # Visualise marker expression in each cluster.
@@ -342,7 +369,7 @@ colData(cells)$clusters |>
 
 # Test For association between the proportion of each cell type and progression status
 
-We recommend using a package such as `diffcyt` for testing for changes in abundance of cell types. However, the `colTest` function allows us to quickly test for associations between the proportions of the cell types and progression status using either wilcoxon rank sum tests or t-tests. Here we see a p-value less than 0.05 but this does not equate to a small fdr.
+We recommend using a package such as `diffcyt` for testing for changes in abundance of cell types. However, the `colTest` function allows us to quickly test for associations between the proportions of the cell types and progression status using either Wilcoxon rank sum tests or t-tests. Here we see a p-value less than 0.05, but this does not equate to a small FDR.
 
 ```{r}
 # Select cells which belong to individuals with progressor status.
@@ -394,7 +421,7 @@ scater::plotReducedDim(cells[,colData(cells)$imageID %in% someImages], dimred="U
 
 # spicyR: test spatial relationships
 
-Our spicyR package (https://www.bioconductor.org/packages/devel/bioc/html/spicyR.html)[https://www.bioconductor.org/packages/devel/bioc/html/spicyR.html] provides a series of functions to aid in the analysis of both immunofluorescence and mass cytometry imaging data as well as other assays that can deeply phenotype individual cells and their spatial location. Here we use the `spicy` function to test for changes in the spatial relationships between pairwise combinations of cells. We quantify spatal relationships using a combination of three radii `Rs = c(20, 50, 100)` and mildy account for some of the global tissue structure using `sigma = 50`.
+Our spicyR package (https://www.bioconductor.org/packages/devel/bioc/html/spicyR.html)[https://www.bioconductor.org/packages/devel/bioc/html/spicyR.html] provides a series of functions to aid in the analysis of both immunofluorescence and mass cytometry imaging data as well as other assays that can deeply phenotype individual cells and their spatial location. Here we use the `spicy` function to test for changes in the spatial relationships between pairwise combinations of cells. We quantify spatial relationships using a combination of three radii `Rs = c(20, 50, 100)` and mildly account for some global tissue structure using `sigma = 50`.
 
 ```{r}
 # Test for changes in pairwise spatial relationships between cell types.
@@ -411,7 +438,7 @@ topPairs(spicyTest, n = 10)
 
 ```
 
-We can visualise these tests using `signifPlot` where we observe that cell type pairs appear to become less attractive (or avoid more) in the progression sampls.
+We can visualise these tests using `signifPlot` where we observe that cell type pairs appear to become less attractive (or avoid more) in the progression sample.
 
 ```{r}
 # Visualise which relationships are changing the most.
@@ -423,7 +450,7 @@ signifPlot(spicyTest,
 
 # lisaClust: Find cellular neighbourhoods
 
-Our lisaClust package (https://www.bioconductor.org/packages/devel/bioc/html/lisaClust.html)[https://www.bioconductor.org/packages/devel/bioc/html/lisaClust.html] provides a series of functions to identify and visualise regions of tissue where spatial associations between cell-types is similar. This package can be used to provide a high-level summary of cell-type colocalization in multiplexed imaging data that has been segmented at a single-cell resolution. Here we use the `lisaClust` function to clusters cells into 5 regions with distinct spatial ordering. 
+Our lisaClust package (https://www.bioconductor.org/packages/devel/bioc/html/lisaClust.html)[https://www.bioconductor.org/packages/devel/bioc/html/lisaClust.html] provides a series of functions to identify and visualise regions of tissue where spatial associations between cell-types is similar. This package can be used to provide a high-level summary of cell-type colocalisation in multiplexed imaging data that has been segmented at a single-cell resolution. Here we use the `lisaClust` function to clusters cells into 5 regions with distinct spatial ordering. 
 
 
 
@@ -510,7 +537,7 @@ hatchingPlot(cells,
 
 ## Test for association with progression
 
-If needed, we can again quickly use the `colTest` function to test for associations between the proportions of the cells in each region and progression status using either wilcoxon rank sum tests or t-tests. Here we see a adjusted p-value less than 0.05.
+If needed, we can again quickly use the `colTest` function to test for associations between the proportions of the cells in each region and progression status using either Wilcoxon rank sum tests or t-tests. Here we see a adjusted p-value less than 0.05.
 
 
 ```{r}
@@ -529,7 +556,7 @@ testRegion
 
 # scFeatures: Test some different features
 
-scFeatures is an R package available on [https://github.com/SydneyBioX/scFeatures](https://github.com/SydneyBioX/scFeatures) that generates multi-view representations of single-cell and spatial data through the construction of a total of 17 feature types. Here we use it to quantify the proportions of each cell type in each image as well as the average expression of each marker on each cell type. `scFeatures` outpus a `list` of two `data.frame`s in this case. 
+scFeatures is an R package available on [https://github.com/SydneyBioX/scFeatures](https://github.com/SydneyBioX/scFeatures) that generates multi-view representations of single-cell and spatial data through the construction of a total of 17 feature types. Here we use it to quantify the proportions of each cell type in each image as well as the average expression of each marker on each cell type. `scFeatures` outputs a `list` of two `data.frame`s in this case. 
 
 ```{r}
 
@@ -563,7 +590,7 @@ test |> head()
 
 # ClassifyR: Classification
 
-Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.com/SydneyBioX/ClassifyR), formalises a convenient framework for evaulating classification in R. We provide functionaility to easily include four key modelling stages; Data transformation, feature selection, classifier training and prediction; into a cross-validation loop. Here we use the `crossValidate` function to perform 100 repeats of 5-fold cross-validation to evaluate the performance of an elastic net model applied to three quanitifications of our MIBI-TOF data; cell type proportions, average mean of each cell type and region proportions.
+Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.com/SydneyBioX/ClassifyR), formalises a convenient framework for evaluating classification in R. We provide functionality to easily include four key modelling stages; Data transformation, feature selection, classifier training and prediction; into a cross-validation loop. Here we use the `crossValidate` function to perform 100 repeats of 5-fold cross-validation to evaluate the performance of an elastic net model applied to three quantification of our MIBI-TOF data; cell type proportions, average mean of each cell type and region proportions.
 
 
 
