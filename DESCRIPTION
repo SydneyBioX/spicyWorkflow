@@ -18,7 +18,9 @@ Depends: devtools,
          spicyR,
          ClassifyR,
          cytomapper,
-         scater
+         scater,
+         dplyr,
+         simpleSeg
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: false
