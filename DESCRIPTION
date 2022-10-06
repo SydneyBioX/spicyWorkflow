@@ -26,4 +26,5 @@ VignetteBuilder: knitr
 Suggests: knitr, rmarkdown, BiocStyle
 NeedsCompilation: no
 URL: https://github.com/SydneyBioX/spicyWorkflow
+BugReports: https://github.com/SydneyBioX/spicyWorkflow/issues
 BiocType: Workflow
