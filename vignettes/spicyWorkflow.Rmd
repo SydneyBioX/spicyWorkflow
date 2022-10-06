@@ -102,7 +102,7 @@ The images are stored in the `images` folder within the `data` folder. Here we u
 
 ```{r}
 
-pathToImages <- "../data/images"
+pathToImages <- "../inst/extdata/images"
 
 # Get directories of images
 imageDirs <- dir(pathToImages, full.names = TRUE)
@@ -120,10 +120,10 @@ We will make use of the `on_disk` option to convert our images to a `CytoImageLi
 
 ```{r}
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
-dir.create("../data/h5Files")
+dir.create("../inst/extdata/h5Files")
 images <- cytomapper::CytoImageList(images, 
                                     on_disk = TRUE, 
-                                    h5FilesPath = "../data/h5Files", 
+                                    h5FilesPath = "../inst/extdata/h5Files", 
                                     BPPARAM = BPPARAM)
 gc()
 
@@ -138,7 +138,7 @@ To associate features in our image with disease progression, it is important to 
 ## Read the clinical data
 ```{r}
 # Read in clinical data, manipulate imageID and select columns
-clinical <- read.csv("../data/1-s2.0-S0092867421014860-mmc1.csv")
+clinical <- read.csv("../inst/extdata/1-s2.0-S0092867421014860-mmc1.csv")
 
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
