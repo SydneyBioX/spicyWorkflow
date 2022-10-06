@@ -17,7 +17,6 @@ Imports: devtools,
          lisaClust,
          spicyR,
          ClassifyR,
-         cytomapper,
          scater,
          dplyr,
          simpleSeg
