@@ -70,7 +70,6 @@ library(ggpubr)
 library(scater)
 library(spicyR)
 library(ClassifyR)
-library(scFeatures)
 library(lisaClust)
 })
 ```
