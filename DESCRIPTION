@@ -9,7 +9,8 @@ Authors@R: c(
 Description: spicyWorkflow provides an overview of how to use our very spicy workflow for 
     performing analysis of highly multiplexed in situ imaging cytometry assays such as IMC, 
     CODEX and MIBI-TOF.
-Depends: devtools,
+Depends: R (>= 4.2.0)
+Imports: devtools,
          cytomapper,
          ggplot2,
          ggpubr,
