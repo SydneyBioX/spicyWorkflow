@@ -45,18 +45,6 @@ library(BiocStyle)
 
 # Loading R packages
 
-Before you begin, you should install all the relevant R packages. You can download our packages as follows...
-
-- BiocManager::install(version='devel')
-- BiocManager::install("lisaClust")
-- BiocManager::install("spicyR")
-- BiocManager::install("ClassifyR")
-- BiocManager::install("cytomapper")
-- BiocManager::install("scater")
-- devtools::install_github("SydneyBioX/simpleSeg")
-- devtools::install_github("SydneyBioX/scFeatures")
-- devtools::install_github("ecool50/FuseSOM")
-
 
 
 ```{r, echo=FALSE, results="hide", warning=FALSE}
@@ -301,11 +289,10 @@ ggplot(df, aes(x = CD68, colour = imageID)) +
 
 Our FuseSOM R package on [https://github.com/ecool50/FuseSOM](https://github.com/ecool50/FuseSOM) and provides a pipeline for the clustering of highly multiplexed in situ imaging cytometry assays. This pipeline uses the Self Organizing Map architecture coupled with Multiview hierarchical clustering and provides functions for the estimation of the number of clusters.
 
-Here we cluster using the `runFuseSOM` function. We have chosen to specify the same subset of markers used in the original manuscript for gating cell types. We have also specified the number of clusters to identify to be 20.
+Here we cluster using the `runFuseSOM` function. We have chosen to specify the same subset of markers used in the original manuscript for gating cell types. We have also specified the number of clusters to identify to be `numClusters = 19`. In addtion to this, while FuseSOM can automatically estimate a grid size for the self organising map, we have set the grid size to be `size = 10` to specify a 10 by 10 grid that should allow for smaller cell subsets to be identified.
 
 ## Perform the clustering
 ```{r}
-cells@metadata <- list()
 # The markers used in the original publication to gate cell types.
 useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA", 
                 "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c", 
@@ -318,7 +305,8 @@ set.seed(51773)
 cells <- runFuseSOM(cells, 
                     markers = useMarkers, 
                     assay = 'norm', 
-                    numClusters = 20)
+                    numClusters = 19,
+                    size = 10)
 
 ```
 
@@ -355,7 +343,9 @@ optiPlot(cells, method = "gap")
 ```
 
 
+## Check cluster frequencies
 
+We find it always useful to check the number of cells in each cluster. Here we can see that cluster 3 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
 
 ```{r}
 # Check cluster frequencies.
@@ -562,11 +552,26 @@ Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.
 
 ```{r message=FALSE}
 
+# Create list to store data.frames
+data <- list()
+
+# Add proportions of each cell type in each image
+data[["props"]] <- getProp(cells, "clusters")
+
+# Add pairwise associations
+data[["dist"]] <- getPairwise(cells, spatialCoords = c("m.cx", "m.cy"),
+                              cellType = "clusters",
+                              Rs = c(20, 50, 100),
+                              sigma = 50,
+                              BPPARAM = BPPARAM)
+data[["dist"]] <- as.data.frame(data[["dist"]])
+
+
 # Add proportions of each region in each image
 # to the list of dataframes.
 data[["regions"]] <- getProp(cells, "region")
 
-# Subset data images with progression status
+# Subset data images with progression status and NA clinical variables.
 measurements <- lapply(data, function(x)x[imagesToUse, ])
 
 # Set seed
