@@ -109,12 +109,12 @@ The R code for this analysis is available on github [https://github.com/SydneyBi
 
 # Read in images
 
-The images are stored in the `images` folder within the `Data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
+The images are stored in the `images` folder within the `data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
 
 
 ```{r}
 
-pathToImages <- "Data/images"
+pathToImages <- "data/images"
 
 # Get directories of images
 imageDirs <- dir(pathToImages, full.names = TRUE)
@@ -133,10 +133,10 @@ We will make use of the `on_disk` option to convert our images to a `CytoImageLi
 ```{r}
 
 # Store images in a CytoImageList with images on_disk as h5 files to save memory. 
-dir.create("Data/h5Files")
+dir.create("data/h5Files")
 images <- cytomapper::CytoImageList(images, 
                                     on_disk = TRUE, 
-                                    h5FilesPath = "Data/h5Files", 
+                                    h5FilesPath = "data/h5Files", 
                                     BPPARAM = BPPARAM)
 gc()
 
@@ -151,7 +151,7 @@ To associate features in our image with disease progression, it is important to 
 ## Read the clinical data
 ```{r}
 # Read in clinical data, manipulate imageID and select columns
-clinical <- read.csv("Data/1-s2.0-S0092867421014860-mmc1.csv")
+clinical <- read.csv("data/1-s2.0-S0092867421014860-mmc1.csv")
 
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
