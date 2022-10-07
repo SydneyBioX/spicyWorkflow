@@ -19,7 +19,8 @@ Imports: devtools,
          ClassifyR,
          scater,
          dplyr,
-         simpleSeg
+         simpleSeg,
+         FuseSOM
 Suggests: knitr, rmarkdown, BiocStyle, EBImage
 License: GPL (>= 3)
 Encoding: UTF-8
