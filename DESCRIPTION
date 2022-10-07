@@ -22,7 +22,7 @@ Imports: devtools,
          simpleSeg,
          FuseSOM
 Suggests: knitr, rmarkdown, BiocStyle, EBImage
-biocViews: Workflow, SingleCellWorkflow, SpatialWorkflow
+biocViews: Workflow, SpatialWorkflow, ImmunoOncologyWorkflow
 License: GPL-3
 Encoding: UTF-8
 VignetteBuilder: knitr 
