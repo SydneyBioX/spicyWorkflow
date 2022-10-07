@@ -3,8 +3,8 @@ Title: Performing a Spatial Analysis of Multiplexed Tissue Imaging Data
 Version: 0.99.1
 Date: 2022-07-27
 Authors@R: c(
-    person("Alexander","Nicholls",role=c("aut", "cre"), email = "anic0077@uni.sydney.edu.au"),
-    person("Ellis","Patrick",role=c("aut"), email = "ellis.patrick@sydney.edu.au")
+    person("Alexander","Nicholls",role=c("aut"), email = "anic0077@uni.sydney.edu.au"),
+    person("Ellis","Patrick",role=c("aut", "cre"), email = "ellis.patrick@sydney.edu.au")
     )
 Description: spicyWorkflow provides an overview of how to use our very spicy workflow for 
     performing analysis of highly multiplexed in situ imaging cytometry assays such as IMC, 
@@ -22,7 +22,7 @@ Imports: devtools,
          simpleSeg,
          FuseSOM
 Suggests: knitr, rmarkdown, BiocStyle, EBImage
-biocViews: CellBasedAssays, SingleCell, Workflow
+biocViews: Workflow, SingleCellWorkflow, SpatialWorkflow
 License: GPL-3
 Encoding: UTF-8
 VignetteBuilder: knitr 
