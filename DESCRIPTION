@@ -4,6 +4,9 @@ Version: 0.99.1
 Date: 2022-07-27
 Authors@R: c(
     person("Alexander","Nicholls",role=c("aut"), email = "anic0077@uni.sydney.edu.au"),
+    person("Nicholas","Robertson",role=c("aut"), email = "nicholas.robertson@sydney.edu.au"),
+    person("Nicolas","Canete",role=c("aut"), email = "nicolas.canete@sydney.edu.au"),
+    person("Elijah","Willie",role=c("aut"), email = "ewil3501@uni.sydney.edu.au"),
     person("Ellis","Patrick",role=c("aut", "cre"), email = "ellis.patrick@sydney.edu.au")
     )
 Description: spicyWorkflow provides an overview of how to use our very spicy workflow for 
