@@ -2,3 +2,5 @@
 ^spicyWorkflow\.html$
 ^spicyWorkflow/vignettes/spicyWorkflow_cache
 ^spicyWorkflow/vignettes/spicyWorkflow_cache/html
+^.*\.Rproj$
+^\.Rproj\.user$
