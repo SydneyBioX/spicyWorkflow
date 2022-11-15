@@ -23,7 +23,7 @@ author:
 date: 27 July, 2022
 vignette: >
   %\VignetteIndexEntry{"Introduction to a spicy workflow"}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{rmarkdown::render}
   %\VignetteEncoding{UTF-8}
 output: 
   BiocStyle::html_document
@@ -299,7 +299,7 @@ Our FuseSOM R package on [https://github.com/ecool50/FuseSOM](https://github.com
 Here we cluster using the `runFuseSOM` function. We have chosen to specify the same subset of markers used in the original manuscript for gating cell types. We have also specified the number of clusters to identify to be `numClusters = 19`. In addtion to this, while FuseSOM can automatically estimate a grid size for the self organising map, we have set the grid size to be `size = 10` to specify a 10 by 10 grid that should allow for smaller cell subsets to be identified.
 
 ## Perform the clustering
-```{r}
+```{r FuseSOM}
 # The markers used in the original publication to gate cell types.
 useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA", 
                 "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c", 
@@ -309,9 +309,9 @@ useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA",
 set.seed(51773)
 
 # Generate SOM and cluster cells into 20 groups.
-cells <- runFuseSOM(cells, 
-                    markers = useMarkers, 
-                    assay = 'norm', 
+cells <- runFuseSOM(cells,
+                    markers = useMarkers,
+                    assay = 'norm',
                     numClusters = 19,
                     size = 10)
 
@@ -588,7 +588,7 @@ set.seed(51773)
 # with 100 repeats of 5-fold cross-validation.
 cv <- crossValidate(measurements = measurements, 
                     outcome = clinical[imagesToUse, "Status"],
-                    classifier = "elasticNetGLM",
+                    classifier = "GLM",
                     nFolds = 5,
                     nRepeats = 100,
                     nCores = nCores
