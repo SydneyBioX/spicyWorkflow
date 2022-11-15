@@ -23,7 +23,7 @@ author:
 date: 27 July, 2022
 vignette: >
   %\VignetteIndexEntry{"Introduction to a spicy workflow"}
-  %\VignetteEngine{rmarkdown::render}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
   BiocStyle::html_document
@@ -31,7 +31,7 @@ output:
 
 
 ```{r setup, include=FALSE, message=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE, warning = FALSE, cache.lazy = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(BiocStyle)
 ```
 
