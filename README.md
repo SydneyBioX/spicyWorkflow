@@ -10,5 +10,5 @@ spicyWorkflow can be installed from GitHub as follows.
 
 ```r
 # install.packages("devtools")
-devtools::install_github("ellispatrick/spicyR")
+devtools::install_github("SydneyBioX/spicyWorkflow")
 ```
