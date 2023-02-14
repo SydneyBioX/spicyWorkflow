@@ -185,13 +185,14 @@ If your images are stored in a `list` or `CytoImageList` they can be segmented w
 
 
 ```{r}
-# Generate segmentation masks 
+# Generate segmentation masks
 masks <- simpleSeg(images,
-                   nucleus = c("PCA", "HH3"),
+                   nucleus = c("HH3"),
                    cellBody = "dilate",
                    transform = "sqrt",
                    sizeSelection = 40,
                    discSize = 2,
+                   pca = TRUE,
                    cores = nCores)
 
 ```
@@ -608,7 +609,7 @@ Here we use the `performancePlot` function to assess the AUC from each repeat of
 ```{r}
 # Calculate AUC for each cross-validation repeat and plot.
 performancePlot(cv,
-                performanceName = "AUC",
+                metric = "AUC",
                 characteristicsList = list(x = "Assay Name"))
 ```
 

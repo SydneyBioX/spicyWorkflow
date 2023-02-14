@@ -33,4 +33,4 @@ NeedsCompilation: no
 URL: https://github.com/SydneyBioX/spicyWorkflow
 BugReports: https://github.com/SydneyBioX/spicyWorkflow/issues
 BiocType: Workflow
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3

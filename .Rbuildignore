@@ -4,3 +4,4 @@
 ^spicyWorkflow/vignettes/spicyWorkflow_cache/html
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^docs$
