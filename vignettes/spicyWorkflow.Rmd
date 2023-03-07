@@ -252,9 +252,9 @@ cells <- cytomapper::measureObjects(masks,
 
 
 
-# Normalize data
+# Normalise data
 
-We should check to see if the marker intensities of each cell require some form of transformation or normalisation. Here we extract the intensities from the `counts` assay. Looking at PanKRT which should be expressed in the majority of the tumour cells, the intensities are clearly very skewed.
+We should check to see if the marker intensities of each cell require some form of transformation or normalisation. Here we extract the intensities from the `counts` assay. Looking at CK7 which should be expressed in the majority of the tumour cells, the intensities are clearly very skewed.
 
 
 ```{r, fig.width=5, fig.height=5}
@@ -262,14 +262,15 @@ We should check to see if the marker intensities of each cell require some form 
 # Extract marker data and bind with information about images
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
 
-# Plots densities of PanKRT for each image.
-ggplot(df, aes(x = PanKRT, colour = imageID)) + 
+# Plots densities of CK7 for each image.
+ggplot(df, aes(x = CK7, colour = imageID)) + 
   geom_density() + 
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  ylim(0,30)
 
 ```
 
-We can transform and normalise our data using the `normalizeCells` function. Here we have taken the intensities from the `counts` assay, performed a square root transform, then for each image trimmed the 99 quantile and min-max scaled to 0-1. This modified data is then store in the `norm` assay by default. We can see that this normalised data appears more bimodal, not perfect, but likely sufficient for clustering.
+We can transform and normalise our data using the `normalizeCells` function. Here we have taken the intensities from the `counts` assay, performed a square root transform, then for each image trimmed the 99 quantile and min-max scaled to 0-1. This modified data is then stored in the `norm` assay by default. We can see that this normalised data appears more bimodal, not perfectly, but likely to a sufficient degree for clustering.
 
 
 ```{r, fig.width=5, fig.height=5}
@@ -277,18 +278,18 @@ We can transform and normalise our data using the `normalizeCells` function. Her
 # Use a square root transform, then trimmed the 99 quantile 
 cells <- normalizeCells(cells, 
                         transformation = "asinh", 
-                        method = c("trim99", "minMax"), 
+                        method = c("trim99","minMax", "PC1"), 
                         assayIn = "counts", 
                         cores = nCores)
 
 # Extract normalised marker information.
-df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
+norm_df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
 
-# Plots densities of normalised PanKRT for each image.
-ggplot(df, aes(x = CD68, colour = imageID)) + 
+
+# Plots densities of normalised CK7 for each image.
+ggplot(norm_df, aes(x = CK7, colour = imageID)) + 
   geom_density() + 
   theme(legend.position = "none")
-
 ```
 
 
@@ -353,7 +354,7 @@ optiPlot(cells, method = "gap")
 
 ## Check cluster frequencies
 
-We find it always useful to check the number of cells in each cluster. Here we can see that cluster 3 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
+We find it always useful to check the number of cells in each cluster. Here we can see that cluster 13 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
 
 ```{r}
 # Check cluster frequencies.
