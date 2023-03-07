@@ -3,12 +3,12 @@ title: "Performing a spatial analysis of multiplexed tissue imaging data."
 params:
   test: FALSE
 author:
-- name: Nicholas Robertson
-  affiliation:
-  - School of Mathematics and Statistics, University of Sydney, Australia
 - name: Alexander Nicholls
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+- name: Nicholas Robertson
+  affiliation:
+  - School of Mathematics and Statistics, University of Sydney, Australia
 - name: Nicholas Canete
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
@@ -54,18 +54,18 @@ We have developed an analytical framework for analysing data from high dimension
 
 
 
-```{r, echo=FALSE, results="hide", warning=FALSE}
+```{r load libraries, echo=FALSE, results="hide", warning=FALSE}
 suppressPackageStartupMessages({
-library(cytomapper)
-library(dplyr)
-library(ggplot2)
-library(simpleSeg)
-library(FuseSOM)
-library(ggpubr)
-library(scater)
-library(spicyR)
-library(ClassifyR)
-library(lisaClust)
+  library(cytomapper)
+  library(dplyr)
+  library(ggplot2)
+  library(simpleSeg)
+  library(FuseSOM)
+  library(ggpubr)
+  library(scater)
+  library(spicyR)
+  library(ClassifyR)
+  library(lisaClust)
 })
 ```
 
@@ -87,7 +87,7 @@ library(lisaClust)
 
 It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources.
 
-```{r}
+```{r set parameters}
 nCores <- 20
 BPPARAM <- simpleSeg:::generateBPParam(nCores)
 
@@ -107,8 +107,7 @@ The R code for this analysis is available on github [https://github.com/SydneyBi
 The images are stored in the `images` folder within the `data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
 
 
-```{r}
-
+```{r load images}
 pathToImages <- "../inst/extdata/images"
 
 # Get directories of images
@@ -120,20 +119,20 @@ files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simpl
 
 # Read files with readImage from EBImage
 images <- lapply(files, EBImage::readImage, as.is = TRUE)
-
 ```
 
 We will make use of the `on_disk` option to convert our images to a `CytoImageList` with the images not held in memory.
 
-```{r}
-# Store images in a CytoImageList with images on_disk as h5 files to save memory. 
+```{r offload images}
+# Store images in a CytoImageList with images on_disk as h5 files to save memory.
 dir.create("../inst/extdata/h5Files")
-images <- cytomapper::CytoImageList(images, 
-                                    on_disk = TRUE, 
-                                    h5FilesPath = "../inst/extdata/h5Files", 
-                                    BPPARAM = BPPARAM)
+images <- cytomapper::CytoImageList(
+  images,
+  on_disk = TRUE,
+  h5FilesPath = "../inst/extdata/h5Files",
+  BPPARAM = BPPARAM
+)
 gc()
-
 ```
 
 
@@ -143,7 +142,7 @@ gc()
 
 To associate features in our image with disease progression, it is important to read in information which links image identifiers to their progression status. We will do this here, making sure that our `imageID` match.
 ## Read the clinical data
-```{r}
+```{r load clincal data}
 # Read in clinical data, manipulate imageID and select columns
 clinical <- read.csv("../inst/extdata/1-s2.0-S0092867421014860-mmc1.csv")
 
@@ -152,9 +151,8 @@ clinical <- clinical |>
 
 clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
 
-clinicalVariables <- c("imageID", "Patient_ID","Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
+clinicalVariables <- c("imageID", "Patient_ID", "Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
 rownames(clinical) <- clinical$imageID
-
 ```
 
 
@@ -163,10 +161,9 @@ rownames(clinical) <- clinical$imageID
 ## Put the clinical data into the colData of SingleCellExperiment
 
 We can then store the clinical information in the `mcols` of the `CytoImageList`.
-```{r}
+```{r add clinical data}
 # Add the clinical data to mcols of images.
 mcols(images) <- clinical[names(images), clinicalVariables]
-
 ```
 
 
@@ -184,17 +181,18 @@ If your images are stored in a `list` or `CytoImageList` they can be segmented w
 
 
 
-```{r}
+```{r segment}
 # Generate segmentation masks
-masks <- simpleSeg(images,
-                   nucleus = c("HH3"),
-                   cellBody = "dilate",
-                   transform = "sqrt",
-                   sizeSelection = 40,
-                   discSize = 2,
-                   pca = TRUE,
-                   cores = nCores)
-
+masks <- simpleSeg(
+  images,
+  nucleus = c("HH3"),
+  cellBody = "dilate",
+  transform = "sqrt",
+  sizeSelection = 40,
+  discSize = 2,
+  pca = TRUE,
+  cores = nCores
+)
 ```
 
 
@@ -203,10 +201,9 @@ masks <- simpleSeg(images,
 
 The `display` and `colorLabels` functions in `EBImage` make it very easy to examine the performance of the cell segmentation. The great thing about `display` is that if used in an interactive session it is very easy to zoom in and out of the image.
 
-```{r}
+```{r visualise segmentation}
 # Visualise segmentation performance one way.
 EBImage::display(colorLabels(masks[[1]]))
-
 ```
 
 ## Visualise outlines
@@ -216,24 +213,28 @@ The `plotPixels` function in `cytomapper` make it easy to overlay the masks on t
 
 ```{r}
 # Visualise segmentation performance another way.
-cytomapper::plotPixels(image = images[1], 
-                       mask = masks[1], 
-                       img_id = "imageID", 
-                       colour_by = c("PanKRT", "GLUT1", "HH3", "CD3", "CD20"), 
-                       display = "single",
-                       colour = list(HH3 = c("black","blue"), 
-                                     CD3 = c("black","purple"),
-                                     CD20 = c("black","green"),
-                                     GLUT1 = c("black", "red"),
-                                     PanKRT = c("black", "yellow")),
-                       bcg = list(HH3 = c(0, 1, 1.5), 
-                                     CD3 = c(0, 1, 1.5),
-                                     CD20 = c(0, 1, 1.5),
-                                     GLUT1 = c(0, 1, 1.5),
-                                     PanKRT = c(0, 1, 1.5)),
-                       legend = NULL)
-
-
+cytomapper::plotPixels(
+  image = images[1],
+  mask = masks[1],
+  img_id = "imageID",
+  colour_by = c("PanKRT", "GLUT1", "HH3", "CD3", "CD20"),
+  display = "single",
+  colour = list(
+    HH3 = c("black", "blue"),
+    CD3 = c("black", "purple"),
+    CD20 = c("black", "green"),
+    GLUT1 = c("black", "red"),
+    PanKRT = c("black", "yellow")
+  ),
+  bcg = list(
+    HH3 = c(0, 1, 1.5),
+    CD3 = c(0, 1, 1.5),
+    CD20 = c(0, 1, 1.5),
+    GLUT1 = c(0, 1, 1.5),
+    PanKRT = c(0, 1, 1.5)
+  ),
+  legend = NULL
+)
 ```
 
 
@@ -243,11 +244,12 @@ In order to charactise the phenotypes of each of the segmented cells, `measureOb
 
 ```{r}
 # Summarise the experssion of each marker in each cell
-cells <- cytomapper::measureObjects(masks, 
-                                    images, 
-                                    img_id = "imageID", 
-                                    BPPARAM = BPPARAM)
-
+cells <- cytomapper::measureObjects(
+  masks,
+  images,
+  img_id = "imageID",
+  BPPARAM = BPPARAM
+)
 ```
 
 
@@ -258,16 +260,13 @@ We should check to see if the marker intensities of each cell require some form 
 
 
 ```{r, fig.width=5, fig.height=5}
-
 # Extract marker data and bind with information about images
 df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
 
 # Plots densities of CK7 for each image.
-ggplot(df, aes(x = CK7, colour = imageID)) + 
-  geom_density() + 
+ggplot(df, aes(x = CK7, colour = imageID)) +
+  geom_density() +
   theme(legend.position = "none") +
-  ylim(0,30)
-
 ```
 
 We can transform and normalise our data using the `normalizeCells` function. Here we have taken the intensities from the `counts` assay, performed a square root transform, then for each image trimmed the 99 quantile and min-max scaled to 0-1. This modified data is then stored in the `norm` assay by default. We can see that this normalised data appears more bimodal, not perfectly, but likely to a sufficient degree for clustering.
@@ -275,20 +274,21 @@ We can transform and normalise our data using the `normalizeCells` function. Her
 
 ```{r, fig.width=5, fig.height=5}
 # Transform and normalise the marker expression of each cell type.
-# Use a square root transform, then trimmed the 99 quantile 
-cells <- normalizeCells(cells, 
-                        transformation = "asinh", 
-                        method = c("trim99","minMax", "PC1"), 
-                        assayIn = "counts", 
-                        cores = nCores)
+# Use a square root transform, then trimmed the 99 quantile
+cells <- normalizeCells(cells,
+  transformation = "asinh",
+  method = c("trim99", "minMax", "PC1"),
+  assayIn = "counts",
+  cores = nCores
+)
 
 # Extract normalised marker information.
 norm_df <- as.data.frame(cbind(colData(cells), t(assay(cells, "norm"))))
 
 
 # Plots densities of normalised CK7 for each image.
-ggplot(norm_df, aes(x = CK7, colour = imageID)) + 
-  geom_density() + 
+ggplot(norm_df, aes(x = CK7, colour = imageID)) +
+  geom_density() +
   theme(legend.position = "none")
 ```
 
@@ -303,20 +303,23 @@ Here we cluster using the `runFuseSOM` function. We have chosen to specify the s
 ## Perform the clustering
 ```{r FuseSOM}
 # The markers used in the original publication to gate cell types.
-useMarkers <- c("PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA", 
-                "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c", 
-                "HLADRDPDQ", "MPO", "Tryptase")
+useMarkers <- c(
+  "PanKRT", "ECAD", "CK7", "VIM", "FAP", "CD31", "CK5", "SMA",
+  "CD45", "CD4", "CD3", "CD8", "CD20", "CD68", "CD14", "CD11c",
+  "HLADRDPDQ", "MPO", "Tryptase"
+)
 
 # Set seed.
 set.seed(51773)
 
 # Generate SOM and cluster cells into 20 groups.
-cells <- runFuseSOM(cells,
-                    markers = useMarkers,
-                    assay = 'norm',
-                    numClusters = 19,
-                    size = 10)
-
+cells <- runFuseSOM(
+  cells,
+  markers = useMarkers,
+  assay = "norm",
+  numClusters = 19,
+  size = 10
+)
 ```
 
 ## Attempt to interpret the phenotype of each cluster
@@ -325,14 +328,16 @@ We can begin the process of understanding what each of these cell clusters are b
 
 ```{r}
 # Visualise marker expression in each cluster.
-scater::plotGroupedHeatmap(cells, 
-                           features = useMarkers, 
-                           group = "clusters", 
-                           exprs_values = "norm",
-                           center = TRUE, 
-                           scale = TRUE, 
-                           zlim = c(-3,3),
-                           cluster_rows = FALSE)
+scater::plotGroupedHeatmap(
+  cells,
+  features = useMarkers,
+  group = "clusters",
+  exprs_values = "norm",
+  center = TRUE,
+  scale = TRUE,
+  zlim = c(-3, 3),
+  cluster_rows = FALSE
+)
 ```
 
 
@@ -342,13 +347,10 @@ We can check to see how reasonable our choice of 20 clusters is using the `estim
 
 
 ```{r}
-
 # Generate metrics for estimating the number of clusters.
 # As I've already run runFuseSOM I don't need to run generateSOM().
 cells <- estimateNumCluster(cells, kSeq = 2:30)
 optiPlot(cells, method = "gap")
-
-
 ```
 
 
@@ -369,25 +371,24 @@ We recommend using a package such as `diffcyt` for testing for changes in abunda
 
 ```{r}
 # Select cells which belong to individuals with progressor status.
-cellsToUse <- cells$Status%in%c("nonprogressor", "progressor")
+cellsToUse <- cells$Status %in% c("nonprogressor", "progressor")
 
 # Perform simple wicoxon rank sum tests on the columns of the proportion matrix.
-testProp <- colTest(cells[, cellsToUse], 
-                    condition = "Status", 
-                    feature = "clusters")
+testProp <- colTest(cells[, cellsToUse],
+  condition = "Status",
+  feature = "clusters"
+)
 
 testProp
-
 ```
 
 ```{r}
-imagesToUse <- rownames(clinical)[clinical[, "Status"]%in%c("nonprogressor", "progressor")]
+imagesToUse <- rownames(clinical)[clinical[, "Status"] %in% c("nonprogressor", "progressor")]
 
 prop <- getProp(cells, feature = "clusters")
 clusterToUse <- rownames(testProp)[1]
 
-boxplot( prop[imagesToUse, clusterToUse] ~ clinical[imagesToUse, "Status"] )
-
+boxplot(prop[imagesToUse, clusterToUse] ~ clinical[imagesToUse, "Status"])
 ```
 
 ## Dimension reduction
@@ -395,21 +396,30 @@ boxplot( prop[imagesToUse, clusterToUse] ~ clinical[imagesToUse, "Status"] )
 As our data is stored in a `SingleCellExperiment` we can also use `scater` to perform and visualise our data in a lower dimension to look for image or cluster differences.
 
 ```{r}
-
 set.seed(51773)
 # Perform dimension reduction using UMP.
-cells <- scater::runUMAP(cells, 
-                         subset_row = useMarkers, 
-                         exprs_values = "norm")
+cells <- scater::runUMAP(
+  cells,
+  subset_row = useMarkers,
+  exprs_values = "norm"
+)
 
 # Select a subset of images to plot.
-someImages <- unique(colData(cells)$imageID)[c(1,10,20,40,50,60)]
+someImages <- unique(colData(cells)$imageID)[c(1, 10, 20, 40, 50, 60)]
 
 # UMAP by imageID.
-scater::plotReducedDim(cells[,colData(cells)$imageID %in% someImages], dimred="UMAP", colour_by="imageID")
+scater::plotReducedDim(
+  cells[, colData(cells)$imageID %in% someImages],
+  dimred = "UMAP",
+  colour_by = "imageID"
+)
 
 # UMAP by cell type cluster.
-scater::plotReducedDim(cells[,colData(cells)$imageID %in% someImages], dimred="UMAP", colour_by="clusters")
+scater::plotReducedDim(
+  cells[, colData(cells)$imageID %in% someImages],
+  dimred = "UMAP",
+  colour_by = "clusters"
+)
 ```
 
 
@@ -421,27 +431,28 @@ Our spicyR package (https://www.bioconductor.org/packages/devel/bioc/html/spicyR
 
 ```{r}
 # Test for changes in pairwise spatial relationships between cell types.
-spicyTest <- spicy(cells[, cellsToUse], 
-                   condition = "Status", 
-                   cellType = "clusters",
-                   imageID = "imageID",
-                   spatialCoords = c("m.cx", "m.cy"),
-                   Rs = c(20, 50, 100),
-                   sigma = 50,
-                   BPPARAM = BPPARAM)
+spicyTest <- spicy(
+  cells[, cellsToUse],
+  condition = "Status",
+  cellType = "clusters",
+  imageID = "imageID",
+  spatialCoords = c("m.cx", "m.cy"),
+  Rs = c(20, 50, 100),
+  sigma = 50,
+  BPPARAM = BPPARAM
+)
 
 topPairs(spicyTest, n = 10)
-
 ```
 
 We can visualise these tests using `signifPlot` where we observe that cell type pairs appear to become less attractive (or avoid more) in the progression sample.
 
 ```{r}
 # Visualise which relationships are changing the most.
-signifPlot(spicyTest,
-           breaks = c(-1.5, 3, 0.5))
-
-
+signifPlot(
+  spicyTest,
+  breaks = c(-1.5, 3, 0.5)
+)
 ```
 
 # lisaClust: Find cellular neighbourhoods
@@ -455,14 +466,15 @@ Our lisaClust package (https://www.bioconductor.org/packages/devel/bioc/html/lis
 set.seed(51773)
 
 # Cluster cells into spatial regions with similar composition.
-cells <- lisaClust(cells, 
-                   k = 5, 
-                   Rs = c(20, 50, 100),
-                   sigma = 50,
-                   spatialCoords = c("m.cx", "m.cy"), 
-                   cellType = "clusters", 
-                   BPPARAM = BPPARAM)
-
+cells <- lisaClust(
+  cells,
+  k = 5,
+  Rs = c(20, 50, 100),
+  sigma = 50,
+  spatialCoords = c("m.cx", "m.cy"),
+  cellType = "clusters",
+  BPPARAM = BPPARAM
+)
 ```
 
 ## Region - cell type enrichment heatmap
@@ -470,10 +482,8 @@ cells <- lisaClust(cells,
 We can try to interpret which spatial orderings the regions are quantifying using the `regionMap` function. This plots the frequency of each cell type in a region relative to what you would expect by chance.
 
 ```{r, fig.height=5, fig.width=5}
-
 # Visualise the enrichment of each cell type in each region
 regionMap(cells, cellType = "clusters", limit = c(0.2, 5))
-
 ```
 
 
@@ -483,16 +493,14 @@ By default, these identified regions are stored in the `regions` column in the `
 
 
 ```{r}
-
 # Extract cell information and filter to specific image.
 df <- colData(cells) |>
-as.data.frame() |>
-filter(imageID == "Point2206_pt1116_31620")
+  as.data.frame() |>
+  filter(imageID == "Point2206_pt1116_31620")
 
 # Colour cells by their region.
 ggplot(df, aes(x = m.cx, y = m.cy, colour = region)) +
   geom_point()
-
 ```
 
 
@@ -500,11 +508,12 @@ While much slower, we have also implemented a function for overlaying the region
 
 ```{r eval = FALSE}
 # Use hatching to visualise regions and cell types.
-hatchingPlot(cells,
-             useImages = "Point2206_pt1116_31620",
-             cellType = "clusters",
-             spatialCoords = c("m.cx", "m.cy")
-            )
+hatchingPlot(
+  cells,
+  useImages = "Point2206_pt1116_31620",
+  cellType = "clusters",
+  spatialCoords = c("m.cx", "m.cy")
+)
 ```
 
 
@@ -513,22 +522,25 @@ This plot is a ggplot object and so the scale can be modified with `scale_region
 ```{r}
 # Use hatching to visualise regions and cell types.
 # Relabel the hatching of the regions.
-hatchingPlot(cells,
-             useImages = "Point2206_pt1116_31620",
-             cellType = "clusters",
-             spatialCoords = c("m.cx", "m.cy"),
-             window = "square",
-             nbp = 300,
-             line.spacing = 41) + 
-  
-  scale_region_manual(values = c(region_1 = 2,
-                               region_2 = 1,
-                               region_3 = 5,
-                               region_4 = 4,
-                               region_5 = 3)) + 
-  
-   guides(colour = guide_legend(ncol = 2))
+hatchingPlot(
+  cells,
+  useImages = "Point2206_pt1116_31620",
+  cellType = "clusters",
+  spatialCoords = c("m.cx", "m.cy"),
+  window = "square",
+  nbp = 300,
+  line.spacing = 41
+) +
 
+  scale_region_manual(values = c(
+    region_1 = 2,
+    region_2 = 1,
+    region_3 = 5,
+    region_4 = 4,
+    region_5 = 3
+  )) +
+
+  guides(colour = guide_legend(ncol = 2))
 ```
 
 ## Test for association with progression
@@ -537,16 +549,15 @@ If needed, we can again quickly use the `colTest` function to test for associati
 
 
 ```{r}
-
 # Test if the proportion of each region is associated
 # with progression status.
-testRegion <- colTest(cells[,cellsToUse], 
-                      feature = "region",
-                      condition = "Status")
+testRegion <- colTest(
+  cells[, cellsToUse],
+  feature = "region",
+  condition = "Status"
+)
 
 testRegion
-
-
 ```
 
 
@@ -560,7 +571,6 @@ Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.
 
 
 ```{r message=FALSE}
-
 # Create list to store data.frames
 data <- list()
 
@@ -568,11 +578,14 @@ data <- list()
 data[["props"]] <- getProp(cells, "clusters")
 
 # Add pairwise associations
-data[["dist"]] <- getPairwise(cells, spatialCoords = c("m.cx", "m.cy"),
-                              cellType = "clusters",
-                              Rs = c(20, 50, 100),
-                              sigma = 50,
-                              BPPARAM = BPPARAM)
+data[["dist"]] <- getPairwise(
+  cells,
+  spatialCoords = c("m.cx", "m.cy"),
+  cellType = "clusters",
+  Rs = c(20, 50, 100),
+  sigma = 50,
+  BPPARAM = BPPARAM
+)
 data[["dist"]] <- as.data.frame(data[["dist"]])
 
 
@@ -581,22 +594,21 @@ data[["dist"]] <- as.data.frame(data[["dist"]])
 data[["regions"]] <- getProp(cells, "region")
 
 # Subset data images with progression status and NA clinical variables.
-measurements <- lapply(data, function(x)x[imagesToUse, ])
+measurements <- lapply(data, function(x) x[imagesToUse, ])
 
 # Set seed
 set.seed(51773)
 
 # Perform cross-validation of an elastic net model
 # with 100 repeats of 5-fold cross-validation.
-cv <- crossValidate(measurements = measurements, 
-                    outcome = clinical[imagesToUse, "Status"],
-                    classifier = "GLM",
-                    nFolds = 5,
-                    nRepeats = 100,
-                    nCores = nCores
-                    )
-
-
+cv <- crossValidate(
+  measurements = measurements,
+  outcome = clinical[imagesToUse, "Status"],
+  classifier = "GLM",
+  nFolds = 5,
+  nRepeats = 100,
+  nCores = nCores
+)
 ```
 
 
@@ -609,9 +621,11 @@ Here we use the `performancePlot` function to assess the AUC from each repeat of
 
 ```{r}
 # Calculate AUC for each cross-validation repeat and plot.
-performancePlot(cv,
-                metric = "AUC",
-                characteristicsList = list(x = "Assay Name"))
+performancePlot(
+  cv,
+  metric = "AUC",
+  characteristicsList = list(x = "Assay Name")
+)
 ```
 
 
