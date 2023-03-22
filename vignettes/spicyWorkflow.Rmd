@@ -66,6 +66,7 @@ suppressPackageStartupMessages({
   library(spicyR)
   library(ClassifyR)
   library(lisaClust)
+  library(scFeatures)
 })
 ```
 
@@ -80,6 +81,7 @@ library(scater)
 library(spicyR)
 library(ClassifyR)
 library(lisaClust)
+library(scFeatures)
 ```
 
 
@@ -266,7 +268,7 @@ df <- as.data.frame(cbind(colData(cells), t(assay(cells, "counts"))))
 # Plots densities of CK7 for each image.
 ggplot(df, aes(x = CK7, colour = imageID)) +
   geom_density() +
-  theme(legend.position = "none") +
+  theme(legend.position = "none")
 ```
 
 We can transform and normalise our data using the `normalizeCells` function. Here we have taken the intensities from the `counts` assay, performed a square root transform, then for each image trimmed the 99 quantile and min-max scaled to 0-1. This modified data is then stored in the `norm` assay by default. We can see that this normalised data appears more bimodal, not perfectly, but likely to a sufficient degree for clustering.
@@ -317,7 +319,7 @@ cells <- runFuseSOM(
   cells,
   markers = useMarkers,
   assay = "norm",
-  numClusters = 19,
+  numClusters = 24,
   size = 10
 )
 ```
@@ -343,7 +345,9 @@ scater::plotGroupedHeatmap(
 
 ## Check how many clusters should be used.
 
-We can check to see how reasonable our choice of 20 clusters is using the `estimateNumCluster` and the `optiPlot` functions. Here we examine the Gap method, others such as Silhouette and Within Cluster Distance are also available.
+We can check to see how reasonable our choice of 24 clusters is using the `estimateNumCluster` and the `optiPlot` functions. Here we examine the Gap method, others such as Silhouette and Within Cluster Distance are also available.
+
+As we can be seen below, we chose the second elbow point as the optimal number of clusters.
 
 
 ```{r}
@@ -356,7 +360,7 @@ optiPlot(cells, method = "gap")
 
 ## Check cluster frequencies
 
-We find it always useful to check the number of cells in each cluster. Here we can see that cluster 13 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
+We find it always useful to check the number of cells in each cluster. Here we can see that cluster 4 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
 
 ```{r}
 # Check cluster frequencies.
@@ -364,6 +368,32 @@ colData(cells)$clusters |>
   table() |>
   sort()
 ```
+
+## Dimension reduction
+
+As our data is stored in a `SingleCellExperiment` we can also use `scater` to perform and visualise our data in a lower dimension to look for cluster differences.
+
+```{r}
+set.seed(51773)
+# Perform dimension reduction using UMP.
+cells <- scater::runUMAP(
+  cells,
+  subset_row = useMarkers,
+  exprs_values = "norm"
+)
+
+# Select a subset of images to plot.
+someImages <- unique(colData(cells)$imageID)[c(1, 10, 20, 40, 50, 60)]
+
+
+# UMAP by cell type cluster.
+scater::plotReducedDim(
+  cells[, colData(cells)$imageID %in% someImages],
+  dimred = "UMAP",
+  colour_by = "clusters"
+)
+```
+
 
 # Test For association between the proportion of each cell type and progression status
 
@@ -390,39 +420,6 @@ clusterToUse <- rownames(testProp)[1]
 
 boxplot(prop[imagesToUse, clusterToUse] ~ clinical[imagesToUse, "Status"])
 ```
-
-## Dimension reduction
-
-As our data is stored in a `SingleCellExperiment` we can also use `scater` to perform and visualise our data in a lower dimension to look for image or cluster differences.
-
-```{r}
-set.seed(51773)
-# Perform dimension reduction using UMP.
-cells <- scater::runUMAP(
-  cells,
-  subset_row = useMarkers,
-  exprs_values = "norm"
-)
-
-# Select a subset of images to plot.
-someImages <- unique(colData(cells)$imageID)[c(1, 10, 20, 40, 50, 60)]
-
-# UMAP by imageID.
-scater::plotReducedDim(
-  cells[, colData(cells)$imageID %in% someImages],
-  dimred = "UMAP",
-  colour_by = "imageID"
-)
-
-# UMAP by cell type cluster.
-scater::plotReducedDim(
-  cells[, colData(cells)$imageID %in% someImages],
-  dimred = "UMAP",
-  colour_by = "clusters"
-)
-```
-
-
 
 
 # spicyR: test spatial relationships
@@ -560,6 +557,23 @@ testRegion <- colTest(
 testRegion
 ```
 
+# scFeatures: Test some different features
+
+scFeatures is an R package that generates multi-view representations of single-cell and spatial data through the construction of a total of 17 feature types. Here we use it to quantify the proportions of each cell type in each image as well as the average expression of each marker on each cell type. `scFeatures` outputs a `list` of two `data.frame`s in this case. 
+
+```{r}
+# Use scFeatures to calculate proportions and the average marker abundance 
+# for each cell type.
+data <- scFeatures(cells,
+                   feature_types = c("proportion_raw", "gene_mean_celltype"),
+                   sample = "imageID",
+                   celltype = "clusters",
+                   assay = "norm",
+                   ncores = nCores )
+names(data) <- c("prop", "mean")
+
+scFeatures_mean = data[["mean"]]
+```
 
 
 # ClassifyR: Classification
@@ -592,6 +606,9 @@ data[["dist"]] <- as.data.frame(data[["dist"]])
 # Add proportions of each region in each image
 # to the list of dataframes.
 data[["regions"]] <- getProp(cells, "region")
+
+# Add scFeatures' generated feature to the list of data.frames
+data[["scFeatures_mean"]] <- scFeatures_mean
 
 # Subset data images with progression status and NA clinical variables.
 measurements <- lapply(data, function(x) x[imagesToUse, ])
