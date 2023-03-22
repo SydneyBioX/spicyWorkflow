@@ -300,7 +300,7 @@ ggplot(norm_df, aes(x = CK7, colour = imageID)) +
 
 Our FuseSOM R package on [https://github.com/ecool50/FuseSOM](https://github.com/ecool50/FuseSOM) and provides a pipeline for the clustering of highly multiplexed in situ imaging cytometry assays. This pipeline uses the Self Organising Map architecture coupled with Multiview hierarchical clustering and provides functions for the estimation of the number of clusters.
 
-Here we cluster using the `runFuseSOM` function. We have chosen to specify the same subset of markers used in the original manuscript for gating cell types. We have also specified the number of clusters to identify to be `numClusters = 19`. In addition to this, while FuseSOM can automatically estimate a grid size for the self organising map, we have set the grid size to be `size = 10` to specify a 10 by 10 grid that should allow for smaller cell subsets to be identified.
+Here we cluster using the `runFuseSOM` function. We have chosen to specify the same subset of markers used in the original manuscript for gating cell types. We have also specified the number of clusters to identify to be `numClusters = 24`. In addition to this, while FuseSOM can automatically estimate a grid size for the self organising map.
 
 ## Perform the clustering
 ```{r FuseSOM}
@@ -319,8 +319,7 @@ cells <- runFuseSOM(
   cells,
   markers = useMarkers,
   assay = "norm",
-  numClusters = 24,
-  size = 10
+  numClusters = 24
 )
 ```
 
@@ -360,7 +359,7 @@ optiPlot(cells, method = "gap")
 
 ## Check cluster frequencies
 
-We find it always useful to check the number of cells in each cluster. Here we can see that cluster 4 is contains lots of (most likely tumour) cells and cluster 7 contains very few cells.
+We find it always useful to check the number of cells in each cluster. Here we can see that cluster 4 is contains lots of (most likely tumour) cells and cluster 16 contains very few cells.
 
 ```{r}
 # Check cluster frequencies.
