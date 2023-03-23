@@ -7,7 +7,7 @@ Authors@R: c(
     person("Nicholas","Robertson",role=c("aut"), email = "nicholas.robertson@sydney.edu.au"),
     person("Nicolas","Canete",role=c("aut"), email = "nicolas.canete@sydney.edu.au"),
     person("Elijah","Willie",role=c("aut"), email = "ewil3501@uni.sydney.edu.au"),
-    person("Ellis","Patrick",role=c("aut"), email = "ellis.patrick@sydney.edu.au")
+    person("Ellis","Patrick",role=c("aut"), email = "ellis.patrick@sydney.edu.au"),
     person("SOMS","Maintainer",role=c("aut", "cre"), email = "maths.bioconductor@sydney.edu.au")
     )
 Description: spicyWorkflow provides an overview of how to use our very spicy workflow for 
