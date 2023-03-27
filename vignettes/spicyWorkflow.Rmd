@@ -556,24 +556,6 @@ testRegion <- colTest(
 testRegion
 ```
 
-# scFeatures: Test some different features
-
-scFeatures is an R package that generates multi-view representations of single-cell and spatial data through the construction of a total of 17 feature types. Here we use it to quantify the proportions of each cell type in each image as well as the average expression of each marker on each cell type. `scFeatures` outputs a `list` of two `data.frame`s in this case. 
-
-```{r}
-# Use scFeatures to calculate proportions and the average marker abundance 
-# for each cell type.
-data <- scFeatures(cells,
-                   feature_types = c("proportion_raw", "gene_mean_celltype"),
-                   sample = "imageID",
-                   celltype = "clusters",
-                   assay = "norm",
-                   ncores = nCores )
-names(data) <- c("prop", "mean")
-
-scFeatures_mean = data[["mean"]]
-```
-
 
 # ClassifyR: Classification
 
@@ -605,9 +587,6 @@ data[["dist"]] <- as.data.frame(data[["dist"]])
 # Add proportions of each region in each image
 # to the list of dataframes.
 data[["regions"]] <- getProp(cells, "region")
-
-# Add scFeatures' generated feature to the list of data.frames
-data[["scFeatures_mean"]] <- scFeatures_mean
 
 # Subset data images with progression status and NA clinical variables.
 measurements <- lapply(data, function(x) x[imagesToUse, ])

@@ -23,8 +23,7 @@ Imports: cytomapper,
          scater,
          dplyr,
          simpleSeg,
-         FuseSOM,
-         scFeatures
+         FuseSOM
 Suggests: knitr, rmarkdown, BiocStyle, EBImage
 biocViews: Workflow, SpatialWorkflow, ImmunoOncologyWorkflow
 License: GPL-3
