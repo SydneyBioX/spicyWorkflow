@@ -563,7 +563,7 @@ Our ClassifyR package, [https://github.com/SydneyBioX/ClassifyR](https://github.
 
 
 
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 # Create list to store data.frames
 data <- list()
 
