@@ -88,7 +88,7 @@ library(lisaClust)
 It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources.
 
 ```{r set parameters}
-nCores <- 20
+nCores <- 5
 BPPARAM <- simpleSeg:::generateBPParam(nCores)
 
 theme_set(theme_classic())
