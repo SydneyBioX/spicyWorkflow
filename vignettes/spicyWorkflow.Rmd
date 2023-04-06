@@ -625,3 +625,10 @@ performancePlot(
 # Summary
 
 Here we have used a pipeline of our spatial analysis R packages to demonstrate an easy way to segment, cluster, normalise, quantify and classify high dimensional in situ cytometry data all within R.
+
+
+# sessionInfo
+
+```{r}
+sessionInfo()
+```
