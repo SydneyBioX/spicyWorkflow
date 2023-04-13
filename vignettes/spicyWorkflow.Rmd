@@ -125,11 +125,10 @@ We will make use of the `on_disk` option to convert our images to a `CytoImageLi
 
 ```{r offload images}
 # Store images in a CytoImageList with images on_disk as h5 files to save memory.
-dir.create("../inst/extdata/h5Files")
 images <- cytomapper::CytoImageList(
   images,
   on_disk = TRUE,
-  h5FilesPath = "../inst/extdata/h5Files",
+  h5FilesPath = HDF5Array::getHDF5DumpDir(),
   BPPARAM = BPPARAM
 )
 gc()
