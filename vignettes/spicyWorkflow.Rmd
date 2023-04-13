@@ -108,7 +108,7 @@ The images are stored in the `images` folder within the `data` folder. Here we u
 
 
 ```{r load images}
-pathToImages <- "../inst/extdata/images"
+pathToImages <- system.file("extdata/images", package = "spicyWorkflow")
 
 # Get directories of images
 imageDirs <- dir(pathToImages, full.names = TRUE)
