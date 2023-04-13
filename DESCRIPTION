@@ -27,7 +27,9 @@ Suggests: knitr,
           scater,
           dplyr,
           simpleSeg,
-          FuseSOM
+          FuseSOM,
+          HDF5Array,
+          parallel
 biocViews: Workflow, SpatialWorkflow, ImmunoOncologyWorkflow
 License: GPL-3
 Encoding: UTF-8
