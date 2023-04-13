@@ -104,29 +104,16 @@ The R code for this analysis is available on github [https://github.com/SydneyBi
 
 # Read in images
 
-The images are stored in the `images` folder within the `data` folder. Here we use `readImages()` from the `EBImage` package to read these into R. If memory is a restricting factor, and the files are in a slightly different format, you could use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object, which can store the images as h5 on-disk.
+The images are stored in the `images` folder within the `data` folder. Here we use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object and store the images as h5 file on-disk.
 
 
 ```{r load images}
 pathToImages <- system.file("extdata/images", package = "spicyWorkflow")
 
-# Get directories of images
-imageDirs <- dir(pathToImages, full.names = TRUE)
-names(imageDirs) <- dir(pathToImages, full.names = FALSE)
-
-# Get files in each directory
-files <- sapply(imageDirs, list.files, pattern = "tif", full.names = TRUE, simplify = FALSE)
-
-# Read files with readImage from EBImage
-images <- lapply(files, EBImage::readImage, as.is = TRUE)
-```
-
-We will make use of the `on_disk` option to convert our images to a `CytoImageList` with the images not held in memory.
-
-```{r offload images}
 # Store images in a CytoImageList with images on_disk as h5 files to save memory.
-images <- cytomapper::CytoImageList(
-  images,
+images <- cytomapper::loadImages(
+  pathToImages,
+  single_channel = TRUE,
   on_disk = TRUE,
   h5FilesPath = HDF5Array::getHDF5DumpDir(),
   BPPARAM = BPPARAM
