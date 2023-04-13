@@ -130,7 +130,12 @@ To associate features in our image with disease progression, it is important to 
 ## Read the clinical data
 ```{r load clincal data}
 # Read in clinical data, manipulate imageID and select columns
-clinical <- read.csv("../inst/extdata/1-s2.0-S0092867421014860-mmc1.csv")
+clinical <- read.csv(
+  system.file(
+    "extdata/1-s2.0-S0092867421014860-mmc1.csv",
+    package = "spicyWorkflow"
+  )
+)
 
 clinical <- clinical |>
   mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
