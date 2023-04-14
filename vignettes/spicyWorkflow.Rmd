@@ -56,8 +56,9 @@ We have developed an analytical framework for analysing data from high dimension
 To install the current release of spicyWorkflow, run the following code.
 
 ```{r, eval=FALSE}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+if (!require("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
 
 BiocManager::install("spicyWorkflow")
 ```
@@ -102,9 +103,9 @@ It is convenient to set the number of cores for running code in parallel. Please
 use_mc <- FALSE
 
 if (use_mc) {
-    nCores <- max(parallel::detectCores() - 1, 1)
+  nCores <- max(parallel::detectCores() - 1, 1)
 } else {
-    nCores <- 1
+  nCores <- 1
 }
 BPPARAM <- simpleSeg:::generateBPParam(nCores)
 
@@ -127,7 +128,7 @@ The images are stored in the `images` folder within the `data` folder. Here we u
 ```{r load images}
 pathToImages <- system.file("extdata/images", package = "spicyWorkflow")
 
-# Store images in a CytoImageList with images on_disk as h5 files to save memory.
+# Store images in a CytoImageList on_disk as h5 files to save memory.
 images <- cytomapper::loadImages(
   pathToImages,
   single_channel = TRUE,
@@ -155,11 +156,17 @@ clinical <- read.csv(
 )
 
 clinical <- clinical |>
-  mutate(imageID = paste0("Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient))
+  mutate(imageID = paste0(
+    "Point", PointNumber, "_pt", Patient_ID, "_", TMAD_Patient
+  ))
 
-clinical$imageID[grep("normal", clinical$Tissue_Type)] <- paste0(clinical$imageID[grep("normal", clinical$Tissue_Type)], "_Normal")
+image_idx <- grep("normal", clinical$Tissue_Type)
+clinical$imageID[image_idx] <- paste0(clinical$imageID[image_idx], "_Normal")
 
-clinicalVariables <- c("imageID", "Patient_ID", "Status", "Age", "SUBTYPE", "PAM50", "Treatment", "DCIS_grade", "Necrosis")
+clinicalVariables <- c(
+  "imageID", "Patient_ID", "Status", "Age", "SUBTYPE", "PAM50", "Treatment",
+  "DCIS_grade", "Necrosis"
+)
 rownames(clinical) <- clinical$imageID
 ```
 
