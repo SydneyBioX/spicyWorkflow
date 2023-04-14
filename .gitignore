@@ -12,3 +12,5 @@ spicyWorkflow.Rproj
 .vscode
 vignettes/scFeatures.txt
 spicyWorkflow.BiocCheck
+/doc/
+/Meta/
