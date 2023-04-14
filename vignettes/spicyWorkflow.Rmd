@@ -96,10 +96,16 @@ library(lisaClust)
 
 # Global paramaters
 
-It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources.
+It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources. Set the `use_mc` flag to `TRUE` if you would like to use parallel processing for the rest of the vignette.
 
 ```{r set parameters}
-nCores <- max(parallel::detectCores() - 1, 1)
+use_mc <- FALSE
+
+if (use_mc) {
+    nCores <- max(parallel::detectCores() - 1, 1)
+} else {
+    nCores <- 1
+}
 BPPARAM <- simpleSeg:::generateBPParam(nCores)
 
 theme_set(theme_classic())
