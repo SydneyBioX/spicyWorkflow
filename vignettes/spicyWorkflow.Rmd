@@ -97,7 +97,7 @@ library(lisaClust)
 
 # Global paramaters
 
-It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources. Set the `use_mc` flag to `TRUE` if you would like to use parallel processing for the rest of the vignette. A minimum of 5 cores is suggested since running this workflow is rather computationally intensive.
+It is convenient to set the number of cores for running code in parallel. Please choose a number that is appropriate for your resources. Set the `use_mc` flag to `TRUE` if you would like to use parallel processing for the rest of the vignette. A minimum of 2 cores is suggested since running this workflow is rather computationally intensive.
 
 ```{r set parameters}
 use_mc <- FALSE
