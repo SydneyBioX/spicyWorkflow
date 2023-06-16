@@ -350,7 +350,8 @@ scater::plotGroupedHeatmap(
   center = TRUE,
   scale = TRUE,
   zlim = c(-3, 3),
-  cluster_rows = FALSE
+  cluster_rows = FALSE,
+  block = "clusters"
 )
 ```
 
