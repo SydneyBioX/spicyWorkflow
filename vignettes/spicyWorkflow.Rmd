@@ -78,6 +78,7 @@ suppressPackageStartupMessages({
   library(spicyR)
   library(ClassifyR)
   library(lisaClust)
+  library(tidySingleCellExperiment)
 })
 ```
 
@@ -92,6 +93,7 @@ library(scater)
 library(spicyR)
 library(ClassifyR)
 library(lisaClust)
+library(tidySingleCellExperiment)
 ```
 
 
@@ -265,6 +267,8 @@ cells <- cytomapper::measureObjects(
   img_id = "imageID",
   BPPARAM = BPPARAM
 )
+
+cells <- cells |> filter(!imageID %in% c('Point6103_pt1008_20624', 'Point6203_pt1107_31568', 'Point6206_pt1197_31571', 'Point6201_pt1027_20597'))
 ```
 
 
