@@ -14,3 +14,4 @@ vignettes/scFeatures.txt
 spicyWorkflow.BiocCheck
 /doc/
 /Meta/
+.devcontainer
