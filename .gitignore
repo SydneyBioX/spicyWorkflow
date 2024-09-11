@@ -8,6 +8,7 @@ spicyWorkflow.Rproj
 
 *.Rproj
 ./*.html
+*.html
 
 .vscode
 vignettes/scFeatures.txt
