@@ -134,8 +134,7 @@ The R code for this analysis is available on github [https://github.com/SydneyBi
 
 # Read in images
 
-Once the spicyWorkflow package is installed, these images will be located within the `spicyWorkflow` folder where the `spicyWorkflow` package is installed, under `inst/extdata/images`. 
-Here we use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object and store the images as h5 file on-disk in a temporary directory using the `h5FilesPath = HDF5Array::getHDF5DumpDir()` parameter.
+The images can be read in from the `SpatialDatasets` package. We can then use `loadImages()` from the `cytomapper` package to load all the tiff images into a `CytoImageList` object and store the images as h5 file on-disk in a temporary directory using the `h5FilesPath = HDF5Array::getHDF5DumpDir()` parameter.
 
 We will also assign the metadata columns of the `CytoImageList` object using the `mcols()` function.
 
