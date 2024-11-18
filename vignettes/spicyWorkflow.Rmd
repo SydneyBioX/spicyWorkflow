@@ -162,29 +162,20 @@ As we're reading the image channels directly from the names of the TIFF image, o
 The channel names can be accessed from the `CytoImageList` object using the `channelNames()` function.
 
 ```{r}
-
-cn <- channelNames(images) # Read in channel names
-head(cn)
-
-cn <- sub(".*_", "", cn) # Remove preceding letters
-cn <- sub(".ome", "", cn) # Remove the .ome
-head(cn)
-
-channelNames(images) <- cn # Reassign channel names
-
+channelNames(images) <- channelNames(images) |>
+                          sub(pattern = ".*_", replacement = "", x = _) |> # Remove preceding letters
+                          sub(pattern = ".ome", replacement = "", x = _) # Remove the .ome
 ```
 
 ### Clean image names
 Similarly, the image names will be taken from the folder name containing the individual TIFF images for each channel. These will often also need to be cleaned. 
 
 ```{r}
-head(names(images))
+split_names <- function(x) {
+  sapply(strsplit(x, "_"), `[`, 3)
+}
 
-nam <- sapply(strsplit(names(images), "_"), `[`, 3)
-head(nam)
-
-names(images) <- nam # Reassigning image names
-mcols(images)[["imageID"]] <- nam # Reassigning image names
+names(images) <- names(images) |> split_names()
 ```
 
 # SimpleSeg: Segment the cells in the images
@@ -292,16 +283,7 @@ To associate features in our image with disease progression, it is important to 
 ## Read the clinical data
 
 ```{r}
-clinical <- read.csv(
-  system.file(
-    "extdata/clinicalData_TMA1_2021_AF.csv",
-    package = "spicyWorkflow"
-  )
-)
-
-rownames(clinical) <- clinical$imageID
-clinical <- clinical[names(images), ]
-
+clinical = SpatialDatasets::fergusonClinical()
 ```
 
 ## Put the clinical data into the colData of SingleCellExperiment
